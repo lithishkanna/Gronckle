@@ -1,42 +1,384 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* App-specific styles */
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-@keyframes logo-spin {
+/* Focus ring for accessibility */
+*:focus-visible {
+  outline: 1px solid white;
+  outline-offset: 2px;
+}
+
+/* Button active states */
+button:active {
+  transform: scale(0.98);
+}
+
+/* Card hover glow effect */
+.card-glow {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-glow:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.03), inset 0 0 20px rgba(255, 255, 255, 0.01);
+}
+
+/* Heart pop animation */
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  30% {
+    transform: scale(1.4);
+  }
+
+  60% {
+    transform: scale(0.9);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.heart-pop {
+  animation: heart-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Gradient shimmer on hero text */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.text-shimmer {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.35) 20%,
+      rgba(255, 255, 255, 1) 40%,
+      rgba(255, 255, 255, 0.35) 60%,
+      rgba(255, 255, 255, 1) 80%,
+      rgba(255, 255, 255, 0.35) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 5s linear infinite;
+}
+
+/* Dragon logo ambient glow */
+@keyframes brand-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.06));
+  }
+  50% {
+    filter: drop-shadow(0 0 35px rgba(255, 255, 255, 0.12));
+  }
+}
+
+.brand-logo-glow {
+  animation: brand-glow 4s ease-in-out infinite;
+}
+
+/* Loading skeleton animation */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.terminal-cursor::after {
+  content: '█';
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+/* Green block cursor for bash-style terminal (step-end = instant on/off) */
+@keyframes terminal-blink {
+
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Scrollbar styling for terminal */
+.terminal-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: #1A1A1A;
+  border-radius: 0;
+}
+
+/* Prevent text selection on interactive elements */
+button,
+nav {
+  user-select: none;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Dialog overlay */
+[data-state="open"] {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
   }
+
   to {
-    transform: rotate(360deg);
+    opacity: 1;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* Dialog content */
+[data-state="open"]>div {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.card {
-  padding: 2em;
+/* Mobile nav overlay */
+.nav-overlay {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.read-the-docs {
-  color: #888;
+
+@keyframes ken-burns {
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.15);
+  }
+}
+
+.ken-burns-zoom {
+  animation: ken-burns 4s ease-out forwards;
+}
+
+/* ─── The Oracle ─────────────────────────────────── */
+
+/* Subtle green glow on the Oracle result box */
+@keyframes oracle-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.06), inset 0 0 15px rgba(74, 222, 128, 0.02);
+    border-color: rgba(74, 222, 128, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(74, 222, 128, 0.1), inset 0 0 20px rgba(74, 222, 128, 0.03);
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+}
+
+.oracle-glow {
+  animation: oracle-pulse 3s ease-in-out infinite;
+}
+
+/* Typing cursor for Oracle response */
+@keyframes oracle-blink {
+
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.oracle-typing-cursor::after {
+  content: '▋';
+  color: rgba(74, 222, 128, 0.6);
+  animation: oracle-blink 0.8s step-end infinite;
+  margin-left: 1px;
+  font-size: 0.85em;
+}
+
+/* Oracle prompt prefix styling */
+.oracle-prompt-prefix {
+  color: rgba(74, 222, 128, 0.5);
+  user-select: none;
+}
+
+/* Oracle confidence badges */
+.oracle-badge-high {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.oracle-badge-medium {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.oracle-badge-low {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+/* ─── Gronckle Dragon Theme ────────────────────── */
+
+/* Dragon breathing animation */
+@keyframes gronckle-breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+.gronckle-breathe {
+  animation: gronckle-breathe 4s ease-in-out infinite;
+}
+
+/* Dragon fire ember color accent */
+:root {
+  --ember: #FF6B2B;
+  --ember-glow: rgba(255, 107, 43, 0.15);
+  --ember-subtle: rgba(255, 107, 43, 0.08);
+}
+
+/* Ember shimmer on hero text */
+.text-shimmer-ember {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 107, 43, 0.6) 20%,
+    rgba(255, 255, 255, 1) 40%,
+    rgba(255, 107, 43, 0.4) 60%,
+    rgba(255, 255, 255, 1) 80%,
+    rgba(255, 107, 43, 0.6) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 5s linear infinite;
+}
+
+/* Dragon waking up loading state */
+@keyframes dragon-wake {
+  0% {
+    transform: scale(0.95) rotate(-3deg);
+    opacity: 0.5;
+  }
+  30% {
+    transform: scale(1.02) rotate(1deg);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(0.98) rotate(-0.5deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.dragon-waking {
+  animation: dragon-wake 1.5s ease-out;
+}
+
+/* Ember glow on hover for cards */
+.card-glow:hover {
+  border-color: rgba(255, 107, 43, 0.15) !important;
+  box-shadow: 0 0 20px rgba(255, 107, 43, 0.04), inset 0 0 20px rgba(255, 107, 43, 0.01) !important;
+}
+
+/* Ember pulse for loading states */
+@keyframes ember-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 107, 43, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 107, 43, 0.4);
+  }
+}
+
+.ember-pulse {
+  animation: ember-pulse 2s ease-in-out infinite;
+}
+
+/* Oracle cursor ember color */
+.oracle-typing-cursor::after {
+  color: rgba(255, 107, 43, 0.7) !important;
 }

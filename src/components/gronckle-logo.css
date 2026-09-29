@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════════════
+   GronckleLogo — Brand Component Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Hover Animation ──────────────────────────────────── */
+.gronckle-logo--animated {
+  transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1),
+              filter  0.3s ease;
+}
+
+.gronckle-logo--animated:hover {
+  transform: scale(1.04);
+}
+
+.gronckle-logo--animated:hover .gronckle-logo__mark {
+  filter: drop-shadow(0 0 12px rgba(232, 116, 59, 0.35));
+}
+
+.gronckle-logo--animated:active {
+  transform: scale(0.98);
+}
+
+/* ── Dragon Mark Glow ─────────────────────────────────── */
+.gronckle-logo__mark {
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+/* ── Inverted hover uses white glow ────────────────────── */
+.gronckle-logo--inverted.gronckle-logo--animated:hover .gronckle-logo__mark {
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.2));
+}
+
+/* ── Monochrome: subtle charcoal glow ─────────────────── */
+.gronckle-logo--monochrome.gronckle-logo--animated:hover .gronckle-logo__mark {
+  filter: drop-shadow(0 0 10px rgba(44, 62, 80, 0.25));
+}
+
+/* ── Wordmark Hover Shimmer ───────────────────────────── */
+@keyframes gronckle-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.gronckle-logo--animated:hover .gronckle-logo__wordmark {
+  background: linear-gradient(90deg,
+    currentColor 0%,
+    rgba(232, 116, 59, 0.8) 50%,
+    currentColor 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gronckle-shimmer 2s linear infinite;
+}
+
+/* ── Tagline Hover Lift ───────────────────────────────── */
+.gronckle-logo__tagline {
+  transition: opacity 0.3s ease, letter-spacing 0.3s ease;
+}
+
+.gronckle-logo--animated:hover .gronckle-logo__tagline {
+  opacity: 1;
+  letter-spacing: 0.3em;
+}
+
+/* ── Responsive: Shrink logos on narrow viewports ──────── */
+@media (max-width: 480px) {
+  .gronckle-logo--full,
+  .gronckle-logo--horizontal {
+    transform: scale(0.85);
+    transform-origin: center center;
+  }
+}
