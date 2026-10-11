@@ -4,9 +4,19 @@ import { getTools, searchTools, incrementLikes, decrementLikes, getComments, add
 import { generateStackWithAI, exportAsPackageJson, exportAsReadme, fetchSimilarStacks, type LLMStackResult, type SimilarToolResult } from '@/lib/api';
 import { saveStack, toggleBookmark, getUserBookmarks } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
-import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, AlertTriangle, ArrowRight, Layers, Terminal as TerminalIcon, BookOpen, Save, FileJson, FileText, Copy, Check, Bookmark } from 'lucide-react';
+import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, AlertTriangle, ArrowRight, Layers, Terminal as TerminalIcon, BookOpen, Save, FileJson, FileText, Copy, Check, Bookmark, Star, Scale } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import TargetCursor from '@/components/TargetCursor';
+import { ToolFilters } from '@/components/ToolFilters';
+import {
+  type FilterState,
+  DEFAULT_FILTER_STATE,
+  parseFiltersFromUrl,
+  serializeFiltersToUrl,
+  applyFiltersAndSort,
+  computeFilterCounts,
+  getMaintenanceStatus,
+} from '@/lib/filters';
 
 // Stagger animation variants
 const containerVariants = {
@@ -36,7 +46,9 @@ function saveLikedTools(liked: Set<string>) {
 export function TheForge() {
   const { isAuthenticated, userLikes } = useAuth();
   const [tools, setTools] = useState<Tool[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<FilterState>(() =>
+    parseFiltersFromUrl(new URLSearchParams(window.location.search))
+  );
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
@@ -48,6 +60,34 @@ export function TheForge() {
   const [bookmarkedTools, setBookmarkedTools] = useState<Set<string>>(new Set());
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [animatingHeart, setAnimatingHeart] = useState<string | null>(null);
+
+  // Sync filters to URL query string
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const serialized = serializeFiltersToUrl(filters);
+    url.search = serialized;
+    window.history.replaceState({}, '', url.toString());
+  }, [filters]);
+
+  // Debounced search when filters.search changes
+  useEffect(() => {
+    if (!filters.search.trim()) {
+      loadTools();
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setLoading(true);
+        const results = await searchTools(filters.search.trim());
+        setTools(results);
+      } catch {
+        setFetchError(true);
+      } finally {
+        setLoading(false);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
 
   // Oracle state
   const [oracleInput, setOracleInput] = useState('');
@@ -239,22 +279,6 @@ export function TheForge() {
     }
   }
 
-  // Backend fuzzy search with debounce
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      setLoading(true);
-      if (!searchQuery.trim()) {
-        const data = await getTools();
-        setTools(data);
-      } else {
-        const results = await searchTools(searchQuery.trim());
-        setTools(results);
-      }
-      setLoading(false);
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
 
   // Random tool suggestion for empty search results
   // (Removed to clean up unused variable warning)
@@ -387,6 +411,9 @@ export function TheForge() {
     commentsCache.current[selectedTool.id] = updated;
     setNewComment('');
   }
+
+  const counts = computeFilterCounts(tools);
+  const filteredTools = applyFiltersAndSort(tools, filters);
 
   return (
     <div className="min-h-screen pt-16 bg-[#0A0A0A] font-sans selection:bg-white/20">
@@ -665,24 +692,38 @@ export function TheForge() {
 
         {/* -- 4. Search & Tools Grid -- */}
         <div className="w-full">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-white/50" />
-              Explore Components
-            </h2>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <BookOpen className="w-6 h-6 text-white/50" />
+                The Vault
+              </h2>
+              <p className="text-xs text-white/40 mt-1">
+                Filter and discover curated tools, libraries, and open-source infrastructure.
+              </p>
+            </div>
             <div className="relative w-full md:w-96">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
               <input
                 type="text"
-                placeholder="Search components..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#111] border border-white/10 text-white pl-11 pr-4 py-2.5 rounded-xl text-sm placeholder:text-white/30 focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all"
+                placeholder="Search tools by name, tag, or tech..."
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="w-full bg-[#111] border border-white/10 text-white pl-11 pr-4 py-2.5 rounded-xl text-sm placeholder:text-white/30 focus:border-[#FF6B2B] focus:ring-1 focus:ring-[#FF6B2B]/20 transition-all"
               />
             </div>
           </div>
 
-          {/* Grid... */}
+          <ToolFilters
+            filters={filters}
+            counts={counts}
+            totalFiltered={filteredTools.length}
+            totalAll={tools.length}
+            onChange={(updated) => setFilters(prev => ({ ...prev, ...updated }))}
+            onReset={() => setFilters(DEFAULT_FILTER_STATE)}
+          />
+
+          {/* Grid Content */}
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -703,15 +744,31 @@ export function TheForge() {
               <p className="text-red-400 font-semibold mb-1">Connection Error</p>
               <p className="text-white/50 text-sm">Failed to sync with the central database.</p>
             </div>
-          ) : tools.length === 0 ? (
-             <div className="text-center py-20">
-               <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/10">
-                 <Search className="w-8 h-8 text-white/20" />
+          ) : filteredTools.length === 0 ? (
+             <div className="text-center py-16 bg-white/[0.01] border border-white/5 rounded-3xl p-8">
+               <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/10">
+                 <Search className="w-7 h-7 text-white/30" />
                </div>
-               <p className="text-white/60 font-medium mb-2">No components found matching "{searchQuery}"</p>
-               <button onClick={() => setSearchQuery('')} className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors">
-                 Clear search filters
-               </button>
+               <p className="text-white/70 font-semibold mb-1 text-base">
+                 No tools match your current filter selection
+               </p>
+               <p className="text-white/40 text-xs max-w-md mx-auto mb-6">
+                 Try broadening your filters or clearing tags and framework constraints.
+               </p>
+               <div className="flex flex-wrap items-center justify-center gap-3">
+                 <button
+                   onClick={() => setFilters(DEFAULT_FILTER_STATE)}
+                   className="px-4 py-2 rounded-xl bg-[#FF6B2B] text-white text-xs font-semibold hover:bg-[#FF6B2B]/90 transition-colors"
+                 >
+                   Clear All Filters
+                 </button>
+                 <button
+                   onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
+                   className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 text-xs font-medium hover:bg-white/10 transition-colors"
+                 >
+                   Reset Search Query
+                 </button>
+               </div>
              </div>
           ) : (
             <motion.div
@@ -721,91 +778,160 @@ export function TheForge() {
                animate="visible"
              >
               <AnimatePresence mode="popLayout">
-                {tools.map((tool) => (
-                  <motion.div
-                    key={tool.id}
-                    layout
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                    className="bg-[#111] border border-white/10 rounded-2xl p-6 card-glow group hover:border-white/20 transition-all duration-300 hover:shadow-2xl hover:shadow-white/5 flex flex-col h-full"
-                  >
-                    <div className="flex flex-col h-full">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                          <Layers className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
-                        </div>
-                        <a
-                          href={tool.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 -m-2 text-white/30 hover:text-white transition-colors"
-                          aria-label={`Visit ${tool.title} website`}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
-                      
-                      <h3 className="text-lg font-bold text-white mb-2">{tool.title}</h3>
-                      <p className="text-white/50 text-sm mb-6 line-clamp-3 leading-relaxed flex-grow">{tool.description}</p>
-
-                      <div className="mt-auto">
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {tool.tags.slice(0, 3).map((tag: string) => (
-                            <span
-                              key={tag}
-                              className="text-[10px] font-medium text-white/60 px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleLike(tool.id)}
-                              className={`p-2 -ml-2 rounded-full hover:bg-white/10 transition-all ${likedTools.has(tool.id) ? 'text-red-500 hover:text-red-400' : 'text-white/40 hover:text-white'}`}
-                              aria-label={`Like ${tool.title}`}
-                            >
-                              <Heart
-                                className={`w-4 h-4 ${likedTools.has(tool.id) ? 'fill-current' : ''} ${animatingHeart === tool.id ? 'heart-pop scale-125' : ''}`}
-                              />
-                            </button>
-                            <span className="text-sm font-medium text-white/50 min-w-[1.5rem]">
-                              {tool.likes_count}
-                            </span>
-                          </div>
-
+                {filteredTools.map((tool) => {
+                  const maint = getMaintenanceStatus(tool.last_commit_date);
+                  return (
+                    <motion.div
+                      key={tool.id}
+                      layout
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+                      className="bg-[#111] border border-white/10 rounded-2xl p-6 card-glow group hover:border-white/20 transition-all duration-300 hover:shadow-2xl hover:shadow-white/5 flex flex-col h-full"
+                    >
+                      <div className="flex flex-col h-full">
+                        {/* Header: Icon, Category & Link */}
+                        <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openComments(tool)}
-                              className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all"
-                              aria-label={`View comments for ${tool.title}`}
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleBookmark(tool.id)}
-                              className={`p-2 rounded-full transition-all ${bookmarkedTools.has(tool.id) ? 'text-yellow-400 hover:text-yellow-300' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                              aria-label={`Bookmark ${tool.title}`}
-                            >
-                              <Bookmark className={`w-4 h-4 ${bookmarkedTools.has(tool.id) ? 'fill-current' : ''}`} />
-                            </button>
-                            <button
-                              onClick={() => handleShare(tool)}
-                              className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all"
-                              aria-label={`Share ${tool.title}`}
-                            >
-                              <Share2 className="w-4 h-4" />
-                            </button>
+                            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-[#FF6B2B]/10 group-hover:border-[#FF6B2B]/30 transition-colors text-white/70 group-hover:text-[#FF6B2B]">
+                              <Layers className="w-5 h-5 transition-colors" />
+                            </div>
+                            {tool.category && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60 font-mono uppercase">
+                                {tool.category}
+                              </span>
+                            )}
+                          </div>
+                          <a
+                            href={tool.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 -m-2 text-white/30 hover:text-white transition-colors"
+                            aria-label={`Visit ${tool.name || tool.title} website`}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                        
+                        {/* Title & Description */}
+                        <h3 className="text-lg font-bold text-white mb-1.5 group-hover:text-[#FF6B2B] transition-colors">
+                          {tool.name || tool.title}
+                        </h3>
+                        <p className="text-white/50 text-sm mb-4 line-clamp-3 leading-relaxed flex-grow">
+                          {tool.description}
+                        </p>
+
+                        {/* Metadata Pills */}
+                        <div className="flex flex-wrap items-center gap-2 mb-4 text-[11px] text-white/40">
+                          {typeof tool.stars === 'number' && tool.stars > 0 && (
+                            <span className="flex items-center gap-1 text-amber-300 font-medium">
+                              <Star className="w-3 h-3 fill-current" />
+                              {tool.stars.toLocaleString()}
+                            </span>
+                          )}
+                          {tool.license && (
+                            <span className="flex items-center gap-1 text-emerald-300">
+                              <Scale className="w-3 h-3" />
+                              {tool.license}
+                            </span>
+                          )}
+                          {tool.pricing && (
+                            <span className="px-2 py-0.5 rounded bg-white/5 border border-white/5 text-white/50 capitalize">
+                              {tool.pricing}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 ml-auto">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                maint === 'active'
+                                  ? 'bg-emerald-400'
+                                  : maint === 'slowing'
+                                  ? 'bg-amber-400'
+                                  : 'bg-zinc-500'
+                              }`}
+                            />
+                            <span className="capitalize">{maint}</span>
+                          </span>
+                        </div>
+
+                        {/* Frameworks & Tags */}
+                        <div className="mt-auto">
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {(tool.frameworks || []).slice(0, 2).map((fw) => (
+                              <span
+                                key={fw}
+                                className="text-[10px] font-medium text-blue-300 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-md"
+                              >
+                                {fw}
+                              </span>
+                            ))}
+                            {(tool.tags || []).slice(0, 3).map((tag: string) => (
+                              <span
+                                key={tag}
+                                className="text-[10px] font-medium text-white/60 px-2 py-0.5 bg-white/5 border border-white/10 rounded-md"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Footer Actions */}
+                          <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleLike(tool.id)}
+                                className={`p-2 -ml-2 rounded-full hover:bg-white/10 transition-all ${
+                                  likedTools.has(tool.id)
+                                    ? 'text-red-500 hover:text-red-400'
+                                    : 'text-white/40 hover:text-white'
+                                }`}
+                                aria-label={`Like ${tool.name || tool.title}`}
+                              >
+                                <Heart
+                                  className={`w-4 h-4 ${likedTools.has(tool.id) ? 'fill-current' : ''} ${
+                                    animatingHeart === tool.id ? 'heart-pop scale-125' : ''
+                                  }`}
+                                />
+                              </button>
+                              <span className="text-sm font-medium text-white/50 min-w-[1.5rem]">
+                                {tool.likes_count}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => openComments(tool)}
+                                className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                                aria-label={`View comments for ${tool.name || tool.title}`}
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleBookmark(tool.id)}
+                                className={`p-2 rounded-full transition-all ${
+                                  bookmarkedTools.has(tool.id)
+                                    ? 'text-yellow-400 hover:text-yellow-300'
+                                    : 'text-white/40 hover:text-white hover:bg-white/10'
+                                }`}
+                                aria-label={`Bookmark ${tool.name || tool.title}`}
+                              >
+                                <Bookmark className={`w-4 h-4 ${bookmarkedTools.has(tool.id) ? 'fill-current' : ''}`} />
+                              </button>
+                              <button
+                                onClick={() => handleShare(tool)}
+                                className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                                aria-label={`Share ${tool.name || tool.title}`}
+                              >
+                                <Share2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </motion.div>
           )}
