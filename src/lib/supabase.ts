@@ -72,26 +72,11 @@ export async function getTopTools(limit: number = 5): Promise<Tool[]> {
   return data || [];
 }
 
-export async function searchTools(query: string): Promise<Tool[]> {
-  const { data, error } = await supabase
-    .rpc('fuzzy_search_tools', { search_term: query });
-
-  if (error || !data || data.length === 0) {
-    if (error) console.error('Error searching tools via RPC:', error);
-    // fallback to ilike if RPC fails or yields 0
-    const { data: fallbackData } = await supabase
-      .from('tools')
-      .select('*')
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
-      .limit(100);
-    
-    const results = fallbackData || [];
-    window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: results.length } }));
-    return results;
-  }
-  
-  window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: data.length } }));
-  return data || [];
+export async function searchTools(query: string, options?: { signal?: AbortSignal }): Promise<Tool[]> {
+  const { executeHybridSearch } = await import('./search');
+  const result = await executeHybridSearch(query, options);
+  window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: result.tools.length, didYouMean: result.didYouMean } }));
+  return result.tools;
 }
 
 export async function searchRepos(query: string): Promise<Repo[]> {
