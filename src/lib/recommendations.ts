@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase.ts';
 import type {
   Tool,
   StackToolRecommendation,
@@ -7,7 +7,7 @@ import type {
   StackRecommendationResult,
   PipelineStep,
   RecommendationFeedback,
-} from '@/types/database';
+} from '../types/database.ts';
 
 export interface GenerateStackOptions {
   lockedToolIds?: string[];
@@ -22,7 +22,15 @@ interface UnderstoodIntent {
   deployment_target: string;
 }
 
-const EDGE_FUNCTION_BASE = import.meta.env.VITE_SUPABASE_URL || '';
+const getEnvVar = (key: string): string => {
+  try {
+    return (import.meta as any).env?.[key] || (globalThis as any).process?.env?.[key] || '';
+  } catch {
+    return '';
+  }
+};
+
+const EDGE_FUNCTION_BASE = getEnvVar('VITE_SUPABASE_URL');
 
 // ─── Step 1: Understand (Deterministic Heuristics Fallback) ────────────
 

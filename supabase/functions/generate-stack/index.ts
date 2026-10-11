@@ -12,6 +12,57 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// ─── 24h In-Memory LRU Query Cache ─────────────────────────────────────
+const QUERY_CACHE = new Map<string, { result: Record<string, unknown>; timestamp: number }>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+// ─── Rate Limiter (Upstash Redis + In-Memory Token Bucket Fallback) ───
+const UPSTASH_REDIS_REST_URL = Deno.env.get('UPSTASH_REDIS_REST_URL') || '';
+const UPSTASH_REDIS_REST_TOKEN = Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || '';
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 30;
+const CLIENT_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
+
+async function checkRateLimit(clientKey: string): Promise<boolean> {
+  if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      const url = `${UPSTASH_REDIS_REST_URL}/pipeline`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([
+          ['INCR', `ratelimit:${clientKey}`],
+          ['EXPIRE', `ratelimit:${clientKey}`, 60],
+        ]),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const currentCount = data[0]?.result;
+        return typeof currentCount === 'number' ? currentCount <= RATE_LIMIT_MAX : true;
+      }
+    } catch {
+      // Fall through to in-memory limiter
+    }
+  }
+
+  const now = Date.now();
+  const record = CLIENT_RATE_MAP.get(clientKey);
+  if (!record || (now - record.windowStart) > RATE_LIMIT_WINDOW_MS) {
+    CLIENT_RATE_MAP.set(clientKey, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (record.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
 interface ToolRecord {
   id: string;
   title: string;
@@ -309,11 +360,34 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const clientKey = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'anon';
+    const isAllowed = await checkRateLimit(clientKey);
+    if (!isAllowed) {
+      return new Response(JSON.stringify({ error: 'Too Many Requests. Rate limit of 30 req/min exceeded.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
+      });
+    }
+
     const { query, locked_tool_ids = [] } = await req.json() as { query: string; locked_tool_ids?: string[] };
     if (!query || !query.trim()) {
       return new Response(JSON.stringify({ error: 'Query is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check 24h query cache
+    const cacheKey = `${query.trim().toLowerCase()}::${(locked_tool_ids || []).slice().sort().join(',')}`;
+    const cached = QUERY_CACHE.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+      return new Response(JSON.stringify(cached.result), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+        },
       });
     }
 
@@ -524,15 +598,24 @@ Respond ONLY with valid JSON in this format:
       'npm run dev',
     ];
 
-    return new Response(JSON.stringify({
+    const resultPayload = {
       query,
       understanding,
       tools: validRecommendations,
       warnings,
       setup_commands: setupCommands,
       source: (ANTHROPIC_API_KEY || OPENAI_API_KEY) ? 'ai_edge' : 'db_fallback',
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    };
+
+    QUERY_CACHE.set(cacheKey, { result: resultPayload, timestamp: Date.now() });
+
+    return new Response(JSON.stringify(resultPayload), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'X-Cache': 'MISS',
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+      },
     });
 
   } catch (err) {

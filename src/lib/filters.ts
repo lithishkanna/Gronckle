@@ -1,4 +1,4 @@
-import type { Tool } from '@/types/database';
+import type { Tool } from '../types/database.ts';
 
 export interface FilterState {
   search: string;
