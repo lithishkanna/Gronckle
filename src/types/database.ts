@@ -3,12 +3,29 @@
 export interface Tool {
   id: string;
   title: string;
+  name?: string;
+  slug?: string;
+  type?: 'repo' | 'website' | 'library' | 'service';
+  category?: string;
+  subcategories?: string[];
   description: string;
-  url: string;
+  use_cases?: string[];
   tags: string[];
+  languages?: string[];
+  frameworks?: string[];
+  runtime?: string[];
+  deploy_targets?: string[];
+  license?: string;
+  pricing?: 'open source' | 'free tier' | 'paid';
+  self_hostable?: boolean;
+  maturity?: 'alpha' | 'beta' | 'stable' | 'mature' | 'deprecated';
+  last_commit_date?: string;
+  stars?: number;
+  open_issues?: number;
   likes_count: number;
   security_grade?: string;
   created_at: string;
+  embedding?: number[] | null;
 }
 
 export interface Comment {

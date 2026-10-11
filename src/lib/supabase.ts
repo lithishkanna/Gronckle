@@ -5,16 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export interface Tool {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  tags: string[];
-  likes_count: number;
-  security_grade: string;
-  created_at: string;
-}
+export type { Tool } from '@/types/database';
 
 export interface Comment {
   id: string;
