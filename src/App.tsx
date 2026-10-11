@@ -14,6 +14,8 @@ import './App.css';
 const TheForge = lazy(() => import('@/sections/TheForge').then(m => ({ default: m.TheForge })));
 const TheSource = lazy(() => import('@/sections/TheSource').then(m => ({ default: m.TheSource })));
 const TheTerminal = lazy(() => import('@/sections/TheTerminal').then(m => ({ default: m.TheTerminal })));
+const ToolDetailPage = lazy(() => import('@/components/ToolDetailPage').then(m => ({ default: m.ToolDetailPage })));
+const ChangelogPage = lazy(() => import('@/sections/ChangelogPage').then(m => ({ default: m.ChangelogPage })));
 
 const PAGE_TITLES: Record<Page, string> = {
   den: 'The Den — GRONCKLE',
@@ -24,6 +26,7 @@ const PAGE_TITLES: Record<Page, string> = {
   forge: 'The Smelt — GRONCKLE',
   source: 'The Stash — GRONCKLE',
   terminal: 'The Cave — GRONCKLE',
+  changelog: 'Changelog — GRONCKLE',
 };
 
 // Loading fallback
@@ -48,6 +51,7 @@ function App() {
   const [introComplete, setIntroComplete] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('den');
   const [showProfile, setShowProfile] = useState(false);
+  const [currentToolSlug, setCurrentToolSlug] = useState<string | null>(null);
 
   // Check if intro already played
   useEffect(() => {
@@ -58,14 +62,41 @@ function App() {
     }
   }, []);
 
+  // Sync route on load and on popstate
+  useEffect(() => {
+    function syncRoute() {
+      const path = window.location.pathname;
+      if (path.startsWith('/tool/')) {
+        const slug = path.replace('/tool/', '').split('/')[0].trim();
+        if (slug) {
+          setCurrentToolSlug(slug);
+          return;
+        }
+      }
+      if (path === '/changelog') {
+        setCurrentPage('changelog');
+        setCurrentToolSlug(null);
+        return;
+      }
+      setCurrentToolSlug(null);
+    }
+
+    syncRoute();
+    window.addEventListener('popstate', syncRoute);
+    return () => window.removeEventListener('popstate', syncRoute);
+  }, []);
+
   // Update page title
   useEffect(() => {
+    if (currentToolSlug) {
+      return;
+    }
     if (showProfile) {
       document.title = 'Profile — GRONCKLE';
     } else {
       document.title = PAGE_TITLES[currentPage] || 'GRONCKLE — Hoard the Best. Build the Rest.';
     }
-  }, [currentPage, showProfile]);
+  }, [currentPage, showProfile, currentToolSlug]);
 
   // Handle stack share URLs (?stack=<id>)
   useEffect(() => {
@@ -82,12 +113,52 @@ function App() {
 
   const handleNavigate = useCallback((page: Page) => {
     setShowProfile(false);
+    setCurrentToolSlug(null);
+    if (page === 'changelog') {
+      if (window.location.pathname !== '/changelog') {
+        window.history.pushState(null, '', '/changelog');
+      }
+    } else {
+      if (window.location.pathname !== '/') {
+        window.history.pushState(null, '', '/');
+      }
+    }
     setCurrentPage(page);
   }, []);
 
+  const handleOpenTool = useCallback((slug: string) => {
+    setShowProfile(false);
+    setCurrentToolSlug(slug);
+    if (window.location.pathname !== `/tool/${slug}`) {
+      window.history.pushState(null, '', `/tool/${slug}`);
+    }
+  }, []);
+
+  const handleCloseTool = useCallback(() => {
+    setCurrentToolSlug(null);
+    if (window.location.pathname !== '/') {
+      window.history.pushState(null, '', '/');
+    }
+  }, []);
+
   const renderPage = () => {
+    if (currentToolSlug) {
+      return (
+        <ToolDetailPage
+          slug={currentToolSlug}
+          onBack={handleCloseTool}
+          onSelectForStack={() => {
+            handleCloseTool();
+            handleNavigate('smelt');
+          }}
+        />
+      );
+    }
     if (showProfile) {
       return <ProfilePage onBack={() => setShowProfile(false)} />;
+    }
+    if (currentPage === 'changelog') {
+      return <ChangelogPage onBack={() => handleNavigate('den')} />;
     }
     switch (currentPage) {
       case 'den':
@@ -124,13 +195,18 @@ function App() {
         />
 
         {/* Cmd+K Global Command Palette */}
-        {introComplete && <CmdKPalette onNavigate={handleNavigate} />}
+        {introComplete && (
+          <CmdKPalette
+            onNavigate={handleNavigate}
+            onOpenTool={handleOpenTool}
+          />
+        )}
 
         {/* Main Content */}
         <AnimatePresence mode="wait">
           {introComplete && (
             <motion.main
-              key={showProfile ? 'profile' : currentPage}
+              key={currentToolSlug ? `tool-${currentToolSlug}` : showProfile ? 'profile' : currentPage}
               className="flex-1"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -145,7 +221,12 @@ function App() {
         </AnimatePresence>
 
         {/* Footer */}
-        {introComplete && !showProfile && <Footer />}
+        {introComplete && !showProfile && (
+          <Footer
+            onOpenChangelog={() => handleNavigate('changelog')}
+            onNavigate={handleNavigate}
+          />
+        )}
 
         {/* Toast notifications */}
         <Toaster position="bottom-right" theme="dark" />

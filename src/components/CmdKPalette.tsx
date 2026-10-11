@@ -8,6 +8,7 @@ import type { Page } from '@/types/database';
 
 interface CmdKPaletteProps {
   onNavigate: (page: Page) => void;
+  onOpenTool?: (slug: string) => void;
 }
 
 const pages: { id: Page; label: string; description: string }[] = [
@@ -15,11 +16,12 @@ const pages: { id: Page; label: string; description: string }[] = [
   { id: 'smelt', label: 'The Smelt', description: 'AI-powered stack generator' },
   { id: 'stash', label: 'The Stash', description: 'GitHub repository explorer' },
   { id: 'cave', label: 'The Cave', description: 'Contact & support' },
+  { id: 'changelog', label: 'Changelog', description: 'Platform updates and architecture releases' },
 ];
 
 const SUGGESTED_QUERIES = ['auth', 'database', 'realtime', 'ui components', 'caching', 'vector search'];
 
-export function CmdKPalette({ onNavigate }: CmdKPaletteProps) {
+export function CmdKPalette({ onNavigate, onOpenTool }: CmdKPaletteProps) {
   const { isAuthenticated, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -32,10 +34,13 @@ export function CmdKPalette({ onNavigate }: CmdKPaletteProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Global Cmd+K / Ctrl+K listener
+  // Global Cmd+K / Ctrl+K and / slash listener
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      const activeTag = (e.target as HTMLElement)?.tagName;
+      const isInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+
+      if (((e.metaKey || e.ctrlKey) && e.key === 'k') || (e.key === '/' && !isInput)) {
         e.preventDefault();
         setOpen(prev => {
           const next = !prev;
@@ -124,16 +129,22 @@ export function CmdKPalette({ onNavigate }: CmdKPaletteProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'j')) {
         e.preventDefault();
         setSelectedIdx(i => Math.min(i + 1, allItems.length - 1));
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'k')) {
         e.preventDefault();
         setSelectedIdx(i => Math.max(i - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (query.trim() && tools[selectedIdx]) {
-          window.open(tools[selectedIdx].url, '_blank', 'noopener');
+          const selected = tools[selectedIdx];
+          const slug = selected.slug || (selected.title || selected.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          if (onOpenTool && slug) {
+            onOpenTool(slug);
+          } else {
+            window.open(selected.url, '_blank', 'noopener');
+          }
           setOpen(false);
         } else if (!query.trim() && pages[selectedIdx]) {
           onNavigate(pages[selectedIdx].id);
@@ -141,7 +152,7 @@ export function CmdKPalette({ onNavigate }: CmdKPaletteProps) {
         }
       }
     },
-    [allItems.length, query, tools, selectedIdx, onNavigate]
+    [allItems.length, query, tools, selectedIdx, onNavigate, onOpenTool]
   );
 
   // Auto-scroll selected item into view
@@ -288,7 +299,12 @@ export function CmdKPalette({ onNavigate }: CmdKPaletteProps) {
                         key={tool.id}
                         data-idx={i}
                         onClick={() => {
-                          window.open(tool.url, '_blank', 'noopener');
+                          const slug = tool.slug || (tool.name || tool.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                          if (onOpenTool && slug) {
+                            onOpenTool(slug);
+                          } else {
+                            window.open(tool.url, '_blank', 'noopener');
+                          }
                           setOpen(false);
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${

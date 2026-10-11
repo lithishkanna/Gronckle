@@ -590,7 +590,18 @@ export function TheForge() {
                         
                         {/* Title & Description */}
                         <h3 className="text-lg font-bold text-white mb-1.5 group-hover:text-[#FF6B2B] transition-colors">
-                          {tool.name || tool.title}
+                          <a
+                            href={`/tool/${tool.slug || (tool.name || tool.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const s = tool.slug || (tool.name || tool.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                              window.history.pushState(null, '', `/tool/${s}`);
+                              window.dispatchEvent(new PopStateEvent('popstate'));
+                            }}
+                            className="hover:underline"
+                          >
+                            {tool.name || tool.title}
+                          </a>
                         </h3>
                         <p className="text-white/50 text-sm mb-4 line-clamp-3 leading-relaxed flex-grow">
                           {tool.description}

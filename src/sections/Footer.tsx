@@ -3,8 +3,14 @@ import { Logo } from '@/components/Logo';
 import { Github, Twitter, Heart, ExternalLink, Check, Flame } from 'lucide-react';
 import { ChangelogModal } from '@/components/ChangelogModal';
 import { toast } from 'sonner';
+import type { Page } from '@/types/database';
 
-export function Footer() {
+interface FooterProps {
+    onOpenChangelog?: () => void;
+    onNavigate?: (page: Page) => void;
+}
+
+export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
     const [email, setEmail] = useState('');
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [changelogOpen, setChangelogOpen] = useState(false);
@@ -103,10 +109,10 @@ export function Footer() {
                             Navigate
                         </h4>
                         <div className="space-y-2.5 text-sm">
-                            <div className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Den</div>
-                            <div className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Smelt</div>
-                            <div className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Stash</div>
-                            <div className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Cave</div>
+                            <button onClick={() => onNavigate?.('den')} className="block text-left text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Den</button>
+                            <button onClick={() => onNavigate?.('smelt')} className="block text-left text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Smelt</button>
+                            <button onClick={() => onNavigate?.('stash')} className="block text-left text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Stash</button>
+                            <button onClick={() => onNavigate?.('cave')} className="block text-left text-white/30 hover:text-white/60 transition-colors cursor-pointer">The Cave</button>
                         </div>
                     </div>
 
@@ -124,11 +130,17 @@ export function Footer() {
                                 <ExternalLink className="w-3 h-3 opacity-50" />
                             </a>
                             <button
-                                onClick={() => setChangelogOpen(true)}
+                                onClick={() => {
+                                    if (onOpenChangelog) {
+                                        onOpenChangelog();
+                                    } else {
+                                        setChangelogOpen(true);
+                                    }
+                                }}
                                 className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors cursor-pointer"
                             >
                                 <span>Changelog</span>
-                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-[#FF6B2B]/10 text-[#FF6B2B] border border-[#FF6B2B]/20">v5.0</span>
+                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-[#FF6B2B]/10 text-[#FF6B2B] border border-[#FF6B2B]/20">v2.0</span>
                             </button>
                             <a href="https://github.com/lithish/gronckle/issues" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
                                 Status & Issues
@@ -255,10 +267,16 @@ export function Footer() {
                         </a>
                         <span className="w-px h-3 bg-white/10" />
                         <button
-                            onClick={() => setChangelogOpen(true)}
+                            onClick={() => {
+                                if (onOpenChangelog) {
+                                    onOpenChangelog();
+                                } else {
+                                    setChangelogOpen(true);
+                                }
+                            }}
                             className="text-[#FF6B2B]/80 hover:text-[#FF6B2B] text-xs font-mono transition-colors"
                         >
-                            v5.0.0
+                            v2.0.0
                         </button>
                     </div>
                 </div>

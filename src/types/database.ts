@@ -103,7 +103,7 @@ export interface UserLike {
   created_at: string;
 }
 
-export type Page = 'den' | 'smelt' | 'stash' | 'cave' | 'intel' | 'forge' | 'source' | 'terminal';
+export type Page = 'den' | 'smelt' | 'stash' | 'cave' | 'intel' | 'forge' | 'source' | 'terminal' | 'changelog';
 
 // ─── Recommendation Pipeline Types ───────────────────────────────────
 

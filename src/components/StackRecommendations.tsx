@@ -337,7 +337,18 @@ export function StackRecommendations({
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div>
                         <h4 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                          {tool.title}
+                          <a
+                            href={`/tool/${tool.slug || tool.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const s = tool.slug || tool.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                              window.history.pushState(null, '', `/tool/${s}`);
+                              window.dispatchEvent(new PopStateEvent('popstate'));
+                            }}
+                            className="hover:underline"
+                          >
+                            {tool.title}
+                          </a>
                         </h4>
                         {tool.slug && (
                           <span className="text-xs text-white/30 font-mono">@{tool.slug}</span>
