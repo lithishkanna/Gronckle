@@ -11,6 +11,7 @@ export interface Submission {
   tags: string[];
   status: 'pending' | 'approved' | 'rejected';
   upvotes: number;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +55,7 @@ export async function submitRepo(submission: {
   title: string;
   description?: string;
   tags?: string[];
+  metadata?: Record<string, unknown>;
 }): Promise<Submission> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -66,6 +68,7 @@ export async function submitRepo(submission: {
       title: submission.title,
       description: submission.description || null,
       tags: submission.tags || [],
+      metadata: submission.metadata || {},
     })
     .select()
     .single();

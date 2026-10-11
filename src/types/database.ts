@@ -9,6 +9,7 @@ export interface Tool {
   category?: string;
   subcategories?: string[];
   description: string;
+  url: string;
   use_cases?: string[];
   tags: string[];
   languages?: string[];
