@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTools, searchTools, incrementLikes, decrementLikes, getComments, addComment, subscribeToToolLikes, subscribeToNewTools, type Tool, type Comment } from '@/lib/supabase';
-import { generateStackWithAI, exportAsPackageJson, exportAsReadme, fetchSimilarStacks, type LLMStackResult, type SimilarToolResult } from '@/lib/api';
-import { saveStack, toggleBookmark, getUserBookmarks } from '@/lib/auth';
+import { toggleBookmark, getUserBookmarks } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
-import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, AlertTriangle, ArrowRight, Layers, Terminal as TerminalIcon, BookOpen, Save, FileJson, FileText, Copy, Check, Bookmark, Star, Scale } from 'lucide-react';
+import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, ArrowRight, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import TargetCursor from '@/components/TargetCursor';
 import { ToolFilters } from '@/components/ToolFilters';
+import { StackRecommendations } from '@/components/StackRecommendations';
+import {
+  generateStackPipeline,
+  swapToolWithAlternative,
+  loadSharedStack,
+} from '@/lib/recommendations';
+import type { StackRecommendationResult, PipelineStep } from '@/types/database';
 import {
   type FilterState,
   DEFAULT_FILTER_STATE,
@@ -91,18 +97,10 @@ export function TheForge() {
 
   // Oracle state
   const [oracleInput, setOracleInput] = useState('');
-  const [oracleResult, setOracleResult] = useState<LLMStackResult | null>(null);
-  const [similarTools, setSimilarTools] = useState<SimilarToolResult[]>([]);
-  const [similarMethod, setSimilarMethod] = useState<'vector' | 'tags' | 'keyword'>('vector');
+  const [recommendationResult, setRecommendationResult] = useState<StackRecommendationResult | null>(null);
+  const [pipelineStep, setPipelineStep] = useState<PipelineStep>('idle');
+  const [lockedTools, setLockedTools] = useState<Set<string>>(new Set());
   const [oracleLoading, setOracleLoading] = useState(false);
-  const [oracleDisplayText, setOracleDisplayText] = useState('');
-  const [oracleTypingDone, setOracleTypingDone] = useState(false);
-  const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Save & Export state
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [copiedExport, setCopiedExport] = useState<'json' | 'readme' | null>(null);
 
   // Cache comments per tool so they persist across dialog opens
   const commentsCache = useRef<Record<string, Comment[]>>({});
@@ -181,102 +179,81 @@ export function TheForge() {
     }
   }
 
-  // Oracle query handler — uses real LLM for authenticated users, local fallback otherwise
+  // Load shared stack from URL (?stack=<id>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stackId = params.get('stack');
+    if (stackId) {
+      loadSharedStack(stackId)
+        .then(loaded => {
+          if (loaded) {
+            setRecommendationResult(loaded);
+            setOracleInput(loaded.query || '');
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Oracle query handler — uses real 5-step pipeline with edge AI and local DB fallback
   async function handleOracleQuery(e: React.FormEvent) {
     e.preventDefault();
     if (!oracleInput.trim() || oracleLoading || tools.length === 0) return;
 
-    // Reset previous result
-    setOracleResult(null);
-    setSimilarTools([]);
-    setOracleDisplayText('');
-    setOracleTypingDone(false);
-    setSaveSuccess(false);
-    if (typingRef.current) clearInterval(typingRef.current);
-
     setOracleLoading(true);
+    setPipelineStep('understanding');
     try {
-      const result = await generateStackWithAI(oracleInput, tools);
-      setOracleResult(result);
-
-      // Asynchronously fetch vector-similar stacks
-      if (result?.tool?.id) {
-        fetchSimilarStacks({ tool_id: result.tool.id, limit: 3 })
-          .then(res => {
-            setSimilarTools(res.data);
-            setSimilarMethod(res.method);
-          })
-          .catch(() => {});
-      }
-
-      // Start typing animation for reasoning text
-      let charIndex = 0;
-      const fullText = result.reasoning;
-      setOracleDisplayText('');
-      typingRef.current = setInterval(() => {
-        charIndex++;
-        if (charIndex <= fullText.length) {
-          setOracleDisplayText(fullText.slice(0, charIndex));
-        } else {
-          if (typingRef.current) clearInterval(typingRef.current);
-          setOracleTypingDone(true);
-        }
-      }, 18);
-    } catch {
-      setOracleResult(null);
+      const result = await generateStackPipeline(oracleInput.trim(), tools, {
+        lockedToolIds: [...lockedTools],
+        onStepChange: setPipelineStep,
+      });
+      setRecommendationResult(result);
+    } catch (error) {
+      console.error('Failed to generate stack:', error);
     } finally {
       setOracleLoading(false);
+      setPipelineStep('complete');
     }
   }
 
-  // Save generated stack to user's profile
-  async function handleSaveStack() {
-    if (!oracleResult || !isAuthenticated || isSaving) return;
-    setIsSaving(true);
-    try {
-      await saveStack({
-        title: `${oracleResult.tool.title} Stack`,
-        query: oracleInput,
-        result: oracleResult as unknown as Record<string, unknown>,
-        is_public: false,
+  function handleReroll() {
+    if (!oracleInput.trim() || oracleLoading || tools.length === 0) return;
+    setOracleLoading(true);
+    setPipelineStep('understanding');
+    generateStackPipeline(oracleInput.trim(), tools, {
+      lockedToolIds: [...lockedTools],
+      onStepChange: setPipelineStep,
+    })
+      .then(res => setRecommendationResult(res))
+      .catch(err => console.error('Reroll error:', err))
+      .finally(() => {
+        setOracleLoading(false);
+        setPipelineStep('complete');
       });
-      setSaveSuccess(true);
-      setShareMessage('Stack saved to your profile!');
-      setTimeout(() => setShareMessage(null), 2500);
-    } catch (error) {
-      console.error('Failed to save stack:', error);
-      setShareMessage('Failed to save stack');
-      setTimeout(() => setShareMessage(null), 2500);
-    } finally {
-      setIsSaving(false);
-    }
   }
 
-  // Export stack as package.json or README
-  async function handleExport(format: 'json' | 'readme') {
-    if (!oracleResult) return;
-    const content = format === 'json'
-      ? exportAsPackageJson(oracleResult)
-      : exportAsReadme(oracleResult, oracleInput);
-    
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopiedExport(format);
-      setShareMessage(`${format === 'json' ? 'package.json' : 'README.md'} copied to clipboard!`);
-      setTimeout(() => {
-        setCopiedExport(null);
-        setShareMessage(null);
-      }, 2500);
-    } catch {
-      // Fallback: download as file
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = format === 'json' ? 'package.json' : 'README.md';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+  function handleToggleLock(toolId: string) {
+    setLockedTools(prev => {
+      const next = new Set(prev);
+      if (next.has(toolId)) next.delete(toolId);
+      else next.add(toolId);
+      return next;
+    });
+    setRecommendationResult(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        tools: prev.tools.map(t =>
+          t.id === toolId ? { ...t, is_locked: !t.is_locked } : t
+        ),
+      };
+    });
+  }
+
+  function handleSwapTool(category: string, altId: string) {
+    if (!recommendationResult) return;
+    const updated = swapToolWithAlternative(recommendationResult, category, altId, tools);
+    setRecommendationResult(updated);
   }
 
 
@@ -476,219 +453,16 @@ export function TheForge() {
           </form>
         </motion.div>
 
-        {/* -- 3. Recommendation Results -- */}
-        <AnimatePresence mode="wait">
-          {oracleResult && (
-            <motion.div
-              key="oracle-result"
-              className="w-full max-w-4xl mb-24"
-              initial={{ opacity: 0, height: 0, y: 20 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -20 }}
-              transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              <div className="bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-                <div className="flex flex-col md:flex-row gap-8 items-start">
-                  
-                  {/* Left Column: Recommended Tool Info */}
-                  <div className="w-full md:w-1/3 flex flex-col gap-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center">
-                        <Layers className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-white">{oracleResult.tool.title}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium tracking-wide uppercase">
-                            {oracleResult.confidence} Match
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {oracleResult.tool.tags.map((tag: string) => (
-                        <span
-                          key={tag}
-                          className="px-3 py-1 text-xs font-medium bg-white/5 border border-white/10 rounded-full text-white/70"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-white/50 text-sm">
-                      <Heart className="w-4 h-4" /> 
-                      <span>{oracleResult.tool.likes_count} developers use this</span>
-                    </div>
-
-                    {/* CTAs */}
-                    <div className="flex flex-col gap-3 mt-auto pt-4 border-t border-white/10">
-                      {isAuthenticated && (
-                        <button 
-                          onClick={handleSaveStack}
-                          disabled={isSaving || saveSuccess}
-                          className={`w-full py-3 px-4 font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${
-                            saveSuccess 
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                              : 'bg-white text-black hover:bg-white/90'
-                          }`}
-                        >
-                          {saveSuccess ? (
-                            <><Check className="w-4 h-4" /> Saved</>
-                          ) : isSaving ? (
-                            <><Save className="w-4 h-4 animate-spin" /> Saving...</>
-                          ) : (
-                            <><Save className="w-4 h-4" /> Save Stack</>
-                          )}
-                        </button>
-                      )}
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleExport('json')}
-                          className="flex-1 py-2.5 px-4 bg-[#222] text-white font-medium rounded-xl border border-white/10 hover:bg-[#333] transition-all hover:border-white/20 flex items-center justify-center gap-2"
-                        >
-                          {copiedExport === 'json' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <FileJson className="w-3.5 h-3.5" />}
-                          package.json
-                        </button>
-                        <button 
-                          onClick={() => handleExport('readme')}
-                          className="flex-1 py-2.5 px-4 bg-[#222] text-white font-medium rounded-xl border border-white/10 hover:bg-[#333] transition-all hover:border-white/20 flex items-center justify-center gap-2"
-                        >
-                          {copiedExport === 'readme' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <FileText className="w-3.5 h-3.5" />}
-                          README.md
-                        </button>
-                      </div>
-                      <a 
-                        href={oracleResult.tool.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="w-full py-2.5 px-4 bg-[#222] text-white font-medium rounded-xl border border-white/10 hover:bg-[#333] transition-all hover:border-white/20 flex items-center justify-center gap-2"
-                      >
-                        Docs <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Right Column: AI Reasoning + Stack Details */}
-                  <div className="w-full md:w-2/3 flex flex-col h-full pl-0 md:pl-8 border-t md:border-t-0 md:border-l border-white/10 pt-6 md:pt-0">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles className="w-5 h-5 text-purple-400" />
-                      <h4 className="text-lg font-semibold text-white">Why this stack?</h4>
-                    </div>
-                    <div className="prose prose-invert max-w-none">
-                      <p className={`text-white/70 text-base leading-relaxed ${!oracleTypingDone ? 'oracle-typing-cursor' : ''}`}>
-                        {oracleDisplayText}
-                      </p>
-                    </div>
-
-                    {/* Suggested Stack Table */}
-                    {oracleTypingDone && oracleResult.suggested_stack && oracleResult.suggested_stack.length > 0 && (
-                      <motion.div
-                        className="mt-6"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <h5 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <Layers className="w-3.5 h-3.5" />
-                          Full Stack Breakdown
-                        </h5>
-                        <div className="space-y-2">
-                          {oracleResult.suggested_stack.map((item, i) => (
-                            <div key={i} className="flex items-start gap-3 bg-white/5 border border-white/5 rounded-xl px-4 py-3">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-white/30 mt-0.5 min-w-[70px]">{item.category}</span>
-                              <div>
-                                <span className="text-sm font-semibold text-white">{item.tool}</span>
-                                <p className="text-xs text-white/40 mt-0.5">{item.reason}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Setup Commands */}
-                    {oracleTypingDone && oracleResult.setup_commands && oracleResult.setup_commands.length > 0 && (
-                      <motion.div
-                        className="mt-6"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.15 }}
-                      >
-                        <h5 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <TerminalIcon className="w-3.5 h-3.5" />
-                          Quick Setup
-                        </h5>
-                        <div className="bg-black/50 border border-white/10 rounded-xl p-4 font-mono text-sm">
-                          {oracleResult.setup_commands.map((cmd, i) => (
-                            <div key={i} className="flex items-start gap-2 py-0.5">
-                              <span className="text-green-400/60 select-none">$</span>
-                              <span className="text-white/70">{cmd}</span>
-                            </div>
-                          ))}
-                          <button
-                            onClick={async () => {
-                              const cmds = oracleResult!.setup_commands.join('\n');
-                              await navigator.clipboard.writeText(cmds);
-                              setShareMessage('Commands copied!');
-                              setTimeout(() => setShareMessage(null), 2000);
-                            }}
-                            className="mt-3 text-xs text-white/30 hover:text-white/60 transition-colors flex items-center gap-1"
-                          >
-                            <Copy className="w-3 h-3" /> Copy all
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Vector Search: Similar Recommendations */}
-                    {oracleTypingDone && similarTools.length > 0 && (
-                      <motion.div
-                        className="mt-6 pt-6 border-t border-white/10"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.2 }}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="text-sm font-semibold text-white/60 uppercase tracking-wider flex items-center gap-2">
-                            <Sparkles className="w-3.5 h-3.5 text-[#FF6B2B]" />
-                            Similar Stacks (Vector Embeddings)
-                          </h5>
-                          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-white/5 text-[#FF6B2B] border border-[#FF6B2B]/20">
-                            {similarMethod === 'vector' ? 'pgvector Cosine 0.7+' : 'Semantic Match'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {similarTools.map((sim) => (
-                            <a
-                              key={sim.id}
-                              href={sim.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-3 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-xl transition-all block group"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold text-white group-hover:text-[#FF6B2B] transition-colors truncate">
-                                  {sim.title}
-                                </span>
-                                <ExternalLink className="w-3 h-3 text-white/30 group-hover:text-white" />
-                              </div>
-                              <p className="text-[11px] text-white/40 line-clamp-2 leading-relaxed">
-                                {sim.description}
-                              </p>
-                            </a>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* -- 3. Recommendation Results & Pipeline UI -- */}
+        <StackRecommendations
+          result={recommendationResult}
+          pipelineStep={pipelineStep}
+          loading={oracleLoading}
+          onReroll={handleReroll}
+          onToggleLock={handleToggleLock}
+          onSwapTool={handleSwapTool}
+          allTools={tools}
+        />
 
         {/* -- 4. Search & Tools Grid -- */}
         <div className="w-full">
