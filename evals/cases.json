@@ -1,0 +1,247 @@
+[
+  {
+    "id": "eval-01",
+    "query": "auth for Next.js",
+    "expected_tools": ["next-auth", "clerk", "supabase-auth", "lucia", "better-auth"],
+    "disallowed_tools": ["prisma", "drizzle", "tailwind", "redis", "bullmq"],
+    "constraints": ["typescript", "permissive-license"]
+  },
+  {
+    "id": "eval-02",
+    "query": "vector database for local python agent",
+    "expected_tools": ["chroma", "qdrant", "weaviate", "milvus", "pgvector"],
+    "disallowed_tools": ["next-auth", "tailwind", "framer-motion", "zod"],
+    "constraints": ["python", "self-hostable"]
+  },
+  {
+    "id": "eval-03",
+    "query": "analytics without cookies",
+    "expected_tools": ["plausible", "umami", "pirsch", "fathom", "posthog"],
+    "disallowed_tools": ["prisma", "react", "fastapi", "docker"],
+    "constraints": ["privacy", "self-hostable"]
+  },
+  {
+    "id": "eval-04",
+    "query": "open source linear alternative",
+    "expected_tools": ["plane", "vikunja", "focalboard", "taiga", "super-productivity"],
+    "disallowed_tools": ["redis", "bullmq", "ruff", "zod"],
+    "constraints": ["self-hostable", "open-source"]
+  },
+  {
+    "id": "eval-05",
+    "query": "fast python linter",
+    "expected_tools": ["ruff", "flake8", "pylint", "black"],
+    "disallowed_tools": ["nextjs", "supabase", "tailwind", "express"],
+    "constraints": ["python", "performance"]
+  },
+  {
+    "id": "eval-06",
+    "query": "realtime collaborative canvas like Figma",
+    "expected_tools": ["excalidraw", "tldraw", "yjs", "liveblocks", "automerge"],
+    "disallowed_tools": ["ruff", "prisma", "stripe", "nodemailer"],
+    "constraints": ["typescript", "realtime"]
+  },
+  {
+    "id": "eval-07",
+    "query": "lightweight state management for react",
+    "expected_tools": ["zustand", "jotai", "valtio", "recoil"],
+    "disallowed_tools": ["fastapi", "qdrant", "docker", "posthog"],
+    "constraints": ["react", "typescript"]
+  },
+  {
+    "id": "eval-08",
+    "query": "headless cms with graphql",
+    "expected_tools": ["strapi", "payload-cms", "directus", "keystonejs"],
+    "disallowed_tools": ["zustand", "ruff", "vitest", "tailwind"],
+    "constraints": ["graphql", "self-hostable"]
+  },
+  {
+    "id": "eval-09",
+    "query": "postgresql orm for typescript",
+    "expected_tools": ["prisma", "drizzle", "kysely", "typeorm"],
+    "disallowed_tools": ["next-auth", "plausible", "ruff", "jotai"],
+    "constraints": ["typescript", "postgres"]
+  },
+  {
+    "id": "eval-10",
+    "query": "self hostable docker alternative to heroku",
+    "expected_tools": ["coolify", "dokku", "caprover", "kamal"],
+    "disallowed_tools": ["zustand", "zod", "prisma", "nextjs"],
+    "constraints": ["docker", "self-hostable"]
+  },
+  {
+    "id": "eval-11",
+    "query": "background jobs and queue runner in nodejs",
+    "expected_tools": ["bullmq", "agenda", "pg-boss", "bree"],
+    "disallowed_tools": ["tailwind", "excalidraw", "ruff", "plausible"],
+    "constraints": ["nodejs", "typescript"]
+  },
+  {
+    "id": "eval-12",
+    "query": "end to end testing for web applications",
+    "expected_tools": ["playwright", "cypress", "puppeteer"],
+    "disallowed_tools": ["prisma", "postgres", "dokku", "strapi"],
+    "constraints": ["testing"]
+  },
+  {
+    "id": "eval-13",
+    "query": "in-memory cache and redis alternative",
+    "expected_tools": ["dragonfly", "keydb", "valkey", "memcached"],
+    "disallowed_tools": ["next-auth", "jotai", "ruff", "playwright"],
+    "constraints": ["performance", "self-hostable"]
+  },
+  {
+    "id": "eval-14",
+    "query": "form validation with schema inference",
+    "expected_tools": ["zod", "valibot", "yup", "superstruct"],
+    "disallowed_tools": ["dokku", "coolify", "dragonfly", "plausible"],
+    "constraints": ["typescript"]
+  },
+  {
+    "id": "eval-15",
+    "query": "documentation site generator with markdown",
+    "expected_tools": ["vitepress", "docusaurus", "fumadocs", "starlight", "nextra"],
+    "disallowed_tools": ["bullmq", "redis", "fastapi", "keydb"],
+    "constraints": ["markdown", "open-source"]
+  },
+  {
+    "id": "eval-16",
+    "query": "modern css framework without runtime",
+    "expected_tools": ["tailwind", "unocss", "panda-css", "vanilla-extract"],
+    "disallowed_tools": ["strapi", "prisma", "bullmq", "playwright"],
+    "constraints": ["css", "frontend"]
+  },
+  {
+    "id": "eval-17",
+    "query": "open source monitoring and error tracking",
+    "expected_tools": ["glitchtip", "sentry", "signoz", "uptrace", "highlight"],
+    "disallowed_tools": ["jotai", "zod", "vitepress", "zustand"],
+    "constraints": ["self-hostable", "observability"]
+  },
+  {
+    "id": "eval-18",
+    "query": "fulltext search engine with vector support",
+    "expected_tools": ["meilisearch", "typesense", "opensearch", "pgvector"],
+    "disallowed_tools": ["tailwind", "zod", "framer-motion", "next-auth"],
+    "constraints": ["search", "self-hostable"]
+  },
+  {
+    "id": "eval-19",
+    "query": "api gateway and reverse proxy",
+    "expected_tools": ["traefik", "caddy", "nginx", "kong"],
+    "disallowed_tools": ["zustand", "prisma", "valibot", "jotai"],
+    "constraints": ["infra", "self-hostable"]
+  },
+  {
+    "id": "eval-20",
+    "query": "email delivery service and transactional mail",
+    "expected_tools": ["resend", "postmark", "nodemailer", "plunk"],
+    "disallowed_tools": ["tailwind", "ruff", "playwright", "dokku"],
+    "constraints": ["email", "backend"]
+  },
+  {
+    "id": "eval-21",
+    "query": "component library for accessible ui",
+    "expected_tools": ["shadcn-ui", "radix-ui", "ariakit", "react-aria"],
+    "disallowed_tools": ["bullmq", "dragonfly", "coolify", "strapi"],
+    "constraints": ["react", "accessibility"]
+  },
+  {
+    "id": "eval-22",
+    "query": "websocket server with pubsub",
+    "expected_tools": ["socket-io", "ws", "partykit", "centrifugo"],
+    "disallowed_tools": ["zod", "vitepress", "tailwind", "prisma"],
+    "constraints": ["realtime", "websockets"]
+  },
+  {
+    "id": "eval-23",
+    "query": "ai agent orchestration framework",
+    "expected_tools": ["langchain", "llamaindex", "autogen", "crewai"],
+    "disallowed_tools": ["dokku", "caddy", "tailwind", "radix-ui"],
+    "constraints": ["python", "ai"]
+  },
+  {
+    "id": "eval-24",
+    "query": "mobile cross platform app development",
+    "expected_tools": ["react-native", "expo", "flutter", "capacitor"],
+    "disallowed_tools": ["bullmq", "dragonfly", "meilisearch", "traefik"],
+    "constraints": ["mobile"]
+  },
+  {
+    "id": "eval-25",
+    "query": "static site generator for fast blogs",
+    "expected_tools": ["astro", "eleventy", "hugo", "zola"],
+    "disallowed_tools": ["postgres", "bullmq", "socket-io", "docker"],
+    "constraints": ["static-site", "performance"]
+  },
+  {
+    "id": "eval-26",
+    "query": "graphql server with auto schema generation",
+    "expected_tools": ["pothos", "type-graphql", "nexus", "mercurius"],
+    "disallowed_tools": ["tailwind", "framer-motion", "dokku", "caddy"],
+    "constraints": ["graphql", "typescript"]
+  },
+  {
+    "id": "eval-27",
+    "query": "serverless database with branching",
+    "expected_tools": ["neon", "planetscale", "turso", "supabase"],
+    "disallowed_tools": ["zod", "zustand", "vitest", "radix-ui"],
+    "constraints": ["database", "cloud"]
+  },
+  {
+    "id": "eval-28",
+    "query": "file uploads and s3 compatible object storage",
+    "expected_tools": ["minio", "tigris", "r2", "uppy", "uploadthing"],
+    "disallowed_tools": ["ruff", "jotai", "vitest", "vitepress"],
+    "constraints": ["storage", "self-hostable"]
+  },
+  {
+    "id": "eval-29",
+    "query": "desktop app framework using web tech",
+    "expected_tools": ["tauri", "electron", "wails", "neutralino"],
+    "disallowed_tools": ["bullmq", "meilisearch", "traefik", "prisma"],
+    "constraints": ["desktop"]
+  },
+  {
+    "id": "eval-30",
+    "query": "cli tool builder with arguments parsing",
+    "expected_tools": ["commander", "yargs", "cac", "clap", "click"],
+    "disallowed_tools": ["shadcn-ui", "tailwind", "dokku", "supabase"],
+    "constraints": ["cli"]
+  },
+  {
+    "id": "eval-31",
+    "query": "feature flag and remote config management",
+    "expected_tools": ["growthbook", "flagsmith", "posthog", "unleash"],
+    "disallowed_tools": ["prisma", "tailwind", "vitepress", "zod"],
+    "constraints": ["self-hostable"]
+  },
+  {
+    "id": "eval-32",
+    "query": "code formatting and linting toolchain",
+    "expected_tools": ["biome", "prettier", "oxc", "eslint"],
+    "disallowed_tools": ["bullmq", "coolify", "minio", "dragonfly"],
+    "constraints": ["developer-tools"]
+  },
+  {
+    "id": "eval-33",
+    "query": "open source firebase alternative with postgres",
+    "expected_tools": ["supabase", "appwrite", "pocketbase", "nhost"],
+    "disallowed_tools": ["tailwind", "zustand", "ruff", "biome"],
+    "constraints": ["self-hostable", "backend"]
+  },
+  {
+    "id": "eval-34",
+    "query": "distributed tracing and opentelemetry",
+    "expected_tools": ["jaeger", "signoz", "tempo", "uptrace"],
+    "disallowed_tools": ["radix-ui", "jotai", "zod", "vitepress"],
+    "constraints": ["observability"]
+  },
+  {
+    "id": "eval-35",
+    "query": "markdown editor with live preview",
+    "expected_tools": ["milkdown", "tiptap", "lexical", "bytemd"],
+    "disallowed_tools": ["dokku", "bullmq", "minio", "traefik"],
+    "constraints": ["frontend", "editor"]
+  }
+]

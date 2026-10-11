@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "seed:dev": "node scripts/seed-dev-tools.mjs",
-    "seed:dev:clean": "node scripts/seed-dev-tools.mjs --clean"
+    "seed:dev:clean": "node scripts/seed-dev-tools.mjs --clean",
+    "eval": "node evals/run-evals.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
