@@ -116,8 +116,8 @@ flowchart TD
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/lithish/gronckle.git
-cd gronckle
+git clone https://github.com/lithishkanna/Gronckle.git
+cd Gronckle
 ```
 
 ### 2. Install dependencies
@@ -171,5 +171,5 @@ We welcome contributions! Please review our [Contributing Guide](CONTRIBUTING.md
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 <div align="center">
-  <sub>Built with 🔥 and laziness by <a href="https://github.com/lithish">Lithish</a>.</sub>
+  <sub>Built with 🔥 and laziness by <a href="https://github.com/lithishkanna">Lithish Kanna</a>.</sub>
 </div>
