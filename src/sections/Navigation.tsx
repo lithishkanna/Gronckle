@@ -104,7 +104,7 @@ export function Navigation({ currentPage, onPageChange, introComplete, onProfile
 
             {/* GitHub Star Link */}
             <motion.a
-              href="https://github.com/lithish/gronckle"
+              href="https://github.com/lithishkanna/gronckle"
               target="_blank"
               rel="noopener noreferrer"
               initial={{ opacity: 0 }}

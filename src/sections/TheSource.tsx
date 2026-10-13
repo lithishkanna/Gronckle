@@ -270,7 +270,7 @@ export function TheSource() {
   }, [repos, selectedCategory, searchQuery, sortBy, repoStars]);
 
   return (
-    <div className="min-h-screen pt-16 bg-[#0A0A0A] font-sans selection:bg-white/20">
+    <div className="min-h-screen pt-16 bg-black font-sans selection:bg-white/20">
       <TargetCursor 
         spinDuration={2}
         hideDefaultCursor
@@ -289,13 +289,13 @@ export function TheSource() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs font-medium mb-6 backdrop-blur-md">
             <Github className="w-3.5 h-3.5 text-white/90" />
-            <span>GRONCKLE Stash Vault • {repos.length} Curated Repositories</span>
+            <span>{repos.length} curated repos &mdash; stuff that actually works</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white via-white/90 to-white/50 animate-text-gradient">
             The Stash
           </h1>
-          <p className="text-lg md:text-xl text-white/45 max-w-2xl mx-auto font-medium leading-relaxed">
-            Discover, clone, and hoard the most useful open-source CLI gems, devops engines, and developer tools — hoard the best, build the rest.
+          <p className="text-lg md:text-xl text-white/45 max-w-2xl mx-auto leading-relaxed">
+            A living list of open-source tools worth bookmarking. CLI utilities, DevOps glue, and the repos you always forget the name of.
           </p>
         </motion.div>
 

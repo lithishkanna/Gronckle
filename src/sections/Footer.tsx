@@ -71,7 +71,7 @@ export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
                         {/* Social icons */}
                         <div className="flex items-center gap-3">
                             <a
-                                href="https://github.com/lithish/gronckle"
+                                href="https://github.com/lithishkanna/gronckle"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-9 h-9 border border-[#1A1A1A] rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:border-white/20 transition-all"
@@ -125,7 +125,7 @@ export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
                             Resources
                         </h4>
                         <div className="space-y-2.5 text-sm">
-                            <a href="https://github.com/lithish/gronckle#readme" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
+                            <a href="https://github.com/lithishkanna/gronckle#readme" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
                                 Documentation
                                 <ExternalLink className="w-3 h-3 opacity-50" />
                             </a>
@@ -142,7 +142,7 @@ export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
                                 <span>Changelog</span>
                                 <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-[#FF6B2B]/10 text-[#FF6B2B] border border-[#FF6B2B]/20">v2.0</span>
                             </button>
-                            <a href="https://github.com/lithish/gronckle/issues" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
+                            <a href="https://github.com/lithishkanna/gronckle/issues" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
                                 Status & Issues
                                 <ExternalLink className="w-3 h-3 opacity-50" />
                             </a>
@@ -180,7 +180,7 @@ export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
                                 Discord Community
                                 <ExternalLink className="w-3 h-3 opacity-60" />
                             </a>
-                            <a href="https://github.com/lithish/gronckle" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
+                            <a href="https://github.com/lithishkanna/gronckle" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 transition-colors">
                                 GitHub Repository
                                 <ExternalLink className="w-3 h-3 opacity-50" />
                             </a>
@@ -247,7 +247,7 @@ export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
                         </button>
                         <span className="w-px h-3 bg-white/10" />
                         <a
-                            href="https://github.com/lithish/gronckle/blob/main/LICENSE"
+                            href="https://github.com/lithishkanna/gronckle/blob/main/LICENSE"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-white/20 hover:text-white/50 transition-colors text-xs"
@@ -257,7 +257,7 @@ export function Footer({ onOpenChangelog, onNavigate }: FooterProps = {}) {
                         </a>
                         <span className="w-px h-3 bg-white/10" />
                         <a
-                            href="https://github.com/lithish/gronckle"
+                            href="https://github.com/lithishkanna/gronckle"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-white/20 hover:text-white/50 transition-colors text-xs"

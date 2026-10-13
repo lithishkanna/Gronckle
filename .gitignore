@@ -32,3 +32,8 @@ dist-ssr
 # Test output
 test-results/
 playwright-report/
+
+# Local data & curation artifacts
+data/top-200-free-tools.json
+scripts/select-top-200-tools.mjs
+TODO.md

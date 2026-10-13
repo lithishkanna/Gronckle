@@ -3,18 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { searchTools, incrementLikes, decrementLikes, getComments, addComment, subscribeToToolLikes, subscribeToNewTools, type Tool, type Comment } from '@/lib/supabase';
 import { toggleBookmark, getUserBookmarks } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
-import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, ArrowRight, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark } from 'lucide-react';
+import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark, Filter } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ToolFilters } from '@/components/ToolFilters';
-import { StackRecommendations } from '@/components/StackRecommendations';
 import { fetchFilterCountsFromSql } from '@/lib/search';
-import {
-  generateStackPipeline,
-  swapToolWithAlternative,
-  loadSharedStack,
-  applyPresetReRanking,
-} from '@/lib/recommendations';
-import type { StackRecommendationResult, PipelineStep } from '@/types/database';
 import TargetCursor from '@/components/TargetCursor';
 import {
   type FilterState,
@@ -121,14 +113,7 @@ export function TheForge() {
     return () => clearTimeout(timer);
   }, [filters]);
 
-  // Oracle state
-  const [oracleInput, setOracleInput] = useState('');
-  const [recommendationResult, setRecommendationResult] = useState<StackRecommendationResult | null>(null);
-  const [pipelineStep, setPipelineStep] = useState<PipelineStep>('idle');
-  const [lockedTools, setLockedTools] = useState<Set<string>>(new Set());
-  const [oracleLoading, setOracleLoading] = useState(false);
-  const [selectedScale, setSelectedScale] = useState<'hobby' | 'startup' | 'large'>('hobby');
-  const [selectedPreset, setSelectedPreset] = useState<'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature'>('balanced');
+
 
   // Cache comments per tool so they persist across dialog opens
   const commentsCache = useRef<Record<string, Comment[]>>({});
@@ -192,135 +177,8 @@ export function TheForge() {
     }
   }
 
-  // Load shared stack from URL (?stack=<id>)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const stackId = params.get('stack');
-    if (stackId) {
-      loadSharedStack(stackId)
-        .then(loaded => {
-          if (loaded) {
-            setRecommendationResult(loaded);
-            setOracleInput(loaded.query || '');
-          }
-        })
-        .catch(() => {});
-    }
-    const q = params.get('q');
-    if (q) {
-      setOracleInput(q);
-    }
-  }, []);
 
-  // Oracle query handler — uses real 5-step pipeline with edge AI and local DB fallback
-  async function handleOracleQuery(e: React.FormEvent) {
-    e.preventDefault();
-    if (!oracleInput.trim() || oracleLoading || tools.length === 0) return;
 
-    setOracleLoading(true);
-    setPipelineStep('understanding');
-    try {
-      const result = await generateStackPipeline(oracleInput.trim(), tools, {
-        lockedToolIds: [...lockedTools],
-        scale: selectedScale,
-        preset: selectedPreset,
-        onStepChange: setPipelineStep,
-      });
-      setRecommendationResult(result);
-    } catch (error) {
-      console.error('Failed to generate stack:', error);
-    } finally {
-      setOracleLoading(false);
-      setPipelineStep('complete');
-    }
-  }
-
-  function handleReroll() {
-    if (!oracleInput.trim() || oracleLoading || tools.length === 0) return;
-    setOracleLoading(true);
-    setPipelineStep('understanding');
-    generateStackPipeline(oracleInput.trim(), tools, {
-      lockedToolIds: [...lockedTools],
-      scale: selectedScale,
-      preset: selectedPreset,
-      onStepChange: setPipelineStep,
-    })
-      .then(res => setRecommendationResult(res))
-      .catch(err => console.error('Reroll error:', err))
-      .finally(() => {
-        setOracleLoading(false);
-        setPipelineStep('complete');
-      });
-  }
-
-  function handlePresetChange(preset: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature') {
-    setSelectedPreset(preset);
-    if (!recommendationResult) return;
-    const reRanked = applyPresetReRanking(recommendationResult, preset);
-    setRecommendationResult(reRanked);
-  }
-
-  function handleScaleChange(scale: 'hobby' | 'startup' | 'large') {
-    setSelectedScale(scale);
-    if (!oracleInput.trim() || oracleLoading || tools.length === 0) return;
-    setOracleLoading(true);
-    setPipelineStep('understanding');
-    generateStackPipeline(oracleInput.trim(), tools, {
-      lockedToolIds: [...lockedTools],
-      scale,
-      preset: selectedPreset,
-      onStepChange: setPipelineStep,
-    })
-      .then(res => setRecommendationResult(res))
-      .catch(err => console.error('Scale update error:', err))
-      .finally(() => {
-        setOracleLoading(false);
-        setPipelineStep('complete');
-      });
-  }
-
-  function handleFollowUp(followUpPrompt: string) {
-    const updatedQuery = `${oracleInput.trim()} (${followUpPrompt})`;
-    setOracleInput(updatedQuery);
-    setOracleLoading(true);
-    setPipelineStep('understanding');
-    generateStackPipeline(updatedQuery, tools, {
-      lockedToolIds: [...lockedTools],
-      scale: selectedScale,
-      preset: selectedPreset,
-      onStepChange: setPipelineStep,
-    })
-      .then(res => setRecommendationResult(res))
-      .catch(err => console.error('Follow-up error:', err))
-      .finally(() => {
-        setOracleLoading(false);
-        setPipelineStep('complete');
-      });
-  }
-
-  function handleToggleLock(toolId: string) {
-    setLockedTools(prev => {
-      const next = new Set(prev);
-      if (next.has(toolId)) next.delete(toolId);
-      else next.add(toolId);
-      return next;
-    });
-    setRecommendationResult(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        tools: prev.tools.map(t =>
-          t.id === toolId ? { ...t, is_locked: !t.is_locked } : t
-        ),
-      };
-    });
-  }
-
-  function handleSwapTool(category: string, altId: string) {
-    if (!recommendationResult) return;
-    const updated = swapToolWithAlternative(recommendationResult, category, altId, tools);
-    setRecommendationResult(updated);
-  }
 
 
   // Random tool suggestion for empty search results
@@ -459,7 +317,7 @@ export function TheForge() {
   const filteredTools = tools;
 
   return (
-    <div className="min-h-screen pt-16 bg-[#0B0D10] font-sans selection:bg-[#FF6B2B]/20">
+    <div className="min-h-screen pt-16 bg-black font-sans selection:bg-[#FF6B2B]/20">
       <TargetCursor 
         spinDuration={2}
         hideDefaultCursor
@@ -471,67 +329,22 @@ export function TheForge() {
         
         {/* -- 1. Hero Section & Branding -- */}
         <motion.div
-          className="text-center mb-12 w-full"
+          className="text-center mb-10 w-full"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-medium mb-6 backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-            <span>AI-Powered Stack Generator</span>
+            <Filter className="w-3.5 h-3.5 text-[#FF6B2B]" />
+            <span>292 tools &mdash; filter, search, explore</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white via-white/90 to-white/50 animate-text-gradient">
             The Smelt
           </h1>
-          <p className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto font-medium leading-relaxed">
-            Describe your project, and our Oracle will smelt the perfect modern development stack in seconds.
+          <p className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto leading-relaxed">
+            Dig through hundreds of hand-picked dev tools. Filter by category, language, license, and more — find what actually fits your stack.
           </p>
         </motion.div>
-
-        {/* -- 2. The Generator Input (Oracle) -- */}
-        <motion.div
-          className="w-full max-w-3xl mb-16 relative z-20"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-        >
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse" />
-          <form onSubmit={handleOracleQuery} className="relative bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden focus-within:border-white/30 transition-colors duration-300 flex items-center p-2 backdrop-blur-xl">
-            <div className="pl-4 pr-2">
-              <Sparkles className={`w-6 h-6 ${oracleLoading ? 'text-blue-400 animate-spin' : 'text-white/30 animate-float'}`} />
-            </div>
-            <input
-              type="text"
-              value={oracleInput}
-              onChange={(e) => setOracleInput(e.target.value)}
-              placeholder="e.g., I need a scalable real-time chat app with a dark UI..."
-              className="flex-1 bg-transparent border-none text-white text-lg px-2 py-4 placeholder:text-white/20 focus:outline-none focus:ring-0"
-              disabled={oracleLoading}
-            />
-            <button
-              type="submit"
-              disabled={!oracleInput.trim() || oracleLoading}
-              className="mr-2 px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-white/90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2"
-            >
-              {oracleLoading ? 'Architecting...' : 'Generate Stack'}
-              {!oracleLoading && <ArrowRight className="w-4 h-4" />}
-            </button>
-          </form>
-        </motion.div>
-
-        {/* -- 3. Recommendation Results & Pipeline UI -- */}
-        <StackRecommendations
-          result={recommendationResult}
-          pipelineStep={pipelineStep}
-          loading={oracleLoading}
-          onReroll={handleReroll}
-          onToggleLock={handleToggleLock}
-          onSwapTool={handleSwapTool}
-          onPresetChange={handlePresetChange}
-          onScaleChange={handleScaleChange}
-          onFollowUp={handleFollowUp}
-          allTools={tools}
-        />
 
         {/* -- 4. Search & Tools Grid -- */}
         <div className="w-full">
@@ -867,7 +680,7 @@ export function TheForge() {
             exit={{ opacity: 0, y: 30, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
-            <Sparkles className="w-4 h-4" />
+            <Star className="w-4 h-4" />
             {shareMessage}
           </motion.div>
         )}
