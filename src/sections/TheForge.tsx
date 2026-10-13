@@ -3,11 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { searchTools, incrementLikes, decrementLikes, getComments, addComment, subscribeToToolLikes, subscribeToNewTools, type Tool, type Comment } from '@/lib/supabase';
 import { toggleBookmark, getUserBookmarks } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
-import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, ArrowRight, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark } from 'lucide-react';
+import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, ArrowRight, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark, GitPullRequest, ArrowRightLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import TargetCursor from '@/components/TargetCursor';
 import { ToolFilters } from '@/components/ToolFilters';
 import { StackRecommendations } from '@/components/StackRecommendations';
+import { AnalyzeRepoModal } from '@/components/AnalyzeRepoModal';
+import { ToolComparisonModal } from '@/components/ToolComparisonModal';
 import { fetchFilterCountsFromSql } from '@/lib/search';
 import {
   generateStackPipeline,
@@ -129,6 +131,9 @@ export function TheForge() {
   const [oracleLoading, setOracleLoading] = useState(false);
   const [selectedScale, setSelectedScale] = useState<'hobby' | 'startup' | 'large'>('hobby');
   const [selectedPreset, setSelectedPreset] = useState<'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature'>('balanced');
+  const [analyzeRepoOpen, setAnalyzeRepoOpen] = useState(false);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [toolsToCompare, setToolsToCompare] = useState<Tool[]>([]);
 
   // Cache comments per tool so they persist across dialog opens
   const commentsCache = useRef<Record<string, Comment[]>>({});
@@ -513,6 +518,29 @@ export function TheForge() {
               {!oracleLoading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
+
+          {/* Quick analysis & comparison launcher */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setAnalyzeRepoOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-[#111418] hover:bg-white/10 text-white/70 hover:text-white border border-white/10 transition-colors flex items-center gap-1.5 font-medium"
+            >
+              <GitPullRequest className="w-3.5 h-3.5 text-orange-400" />
+              <span>Analyze My Repo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setToolsToCompare(tools.slice(0, 2));
+                setComparisonOpen(true);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-[#111418] hover:bg-white/10 text-white/70 hover:text-white border border-white/10 transition-colors flex items-center gap-1.5 font-medium"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" />
+              <span>Compare Tools &amp; Why Switch</span>
+            </button>
+          </div>
         </motion.div>
 
         {/* -- 3. Recommendation Results & Pipeline UI -- */}
@@ -868,6 +896,14 @@ export function TheForge() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnalyzeRepoModal open={analyzeRepoOpen} onOpenChange={setAnalyzeRepoOpen} />
+      <ToolComparisonModal
+        open={comparisonOpen}
+        onOpenChange={setComparisonOpen}
+        tools={toolsToCompare}
+        availableTools={tools}
+      />
     </div>
   );
 }
