@@ -1,4 +1,4 @@
-name: Deploy StackForge
+name: Deploy Gronckle
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
   lint-and-build:
-    name: Lint, Type Check & Build
+    name: Lint, Test, Type Check & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,18 +21,21 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: app/package-lock.json
+          cache-dependency-path: package-lock.json
       
       - name: Install dependencies
-        working-directory: app
         run: npm ci
       
+      - name: Lint verification
+        run: npm run lint
+      
+      - name: Run unit tests
+        run: npm run test
+      
       - name: TypeScript type check
-        working-directory: app
         run: npx tsc --noEmit
       
       - name: Build
-        working-directory: app
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -42,7 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: app/dist/
+          path: dist/
           retention-days: 7
 
   deploy:
@@ -59,4 +62,3 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: app

@@ -389,13 +389,31 @@ export function generateStackFromDatabase(
   const chosenDbTools = tools.filter(t => validTools.some(vt => vt.id === t.id));
   const warnings = detectCompatibilityWarnings(chosenDbTools, intent.constraints);
 
+  const npmPkgs: string[] = [];
+  const customCmds: string[] = [];
+  for (const t of validTools) {
+    if (t.install_command) {
+      customCmds.push(t.install_command);
+    } else if (t.npm_package) {
+      npmPkgs.push(t.npm_package);
+    } else {
+      const isNpm = (t.category || '').toLowerCase().includes('frontend') ||
+                    (t.category || '').toLowerCase().includes('react') ||
+                    (t.languages || []).some(l => /typescript|javascript/i.test(l));
+      if (isNpm) {
+        npmPkgs.push((t.slug || t.title).toLowerCase().replace(/[^a-z0-9-]/g, ''));
+      }
+    }
+  }
+
   const setup_commands = [
     `# Initialize stack for ${intent.primary_language || 'modern web'}`,
-    'npm create vite@latest my-app',
+    intent.primary_language === 'python'
+      ? 'python -m venv .venv && source .venv/bin/activate'
+      : 'npm create vite@latest my-app',
     'cd my-app',
-    validTools.length > 0
-      ? `npm install ${validTools.map(t => (t.slug || t.title).toLowerCase().replace(/[^a-z0-9-]/g, '')).slice(0, 4).join(' ')}`
-      : 'npm install',
+    ...(npmPkgs.length > 0 ? [`npm install ${npmPkgs.slice(0, 5).join(' ')}`] : []),
+    ...customCmds,
     'npm run dev',
   ];
 
@@ -447,24 +465,15 @@ export async function generateStackPipeline(
 
       onStepChange?.('explaining');
 
-      // Step 5: Client-side Validation (verify every ID against allTools)
-      const validTools = (data.tools || []).filter(recommendedTool => {
-        const found = allTools.find(t => t.id === recommendedTool.id);
-        if (!found) return false;
-        // Also validate alternatives
-        recommendedTool.alternatives = (recommendedTool.alternatives || []).filter(alt =>
-          allTools.some(t => t.id === alt.id)
-        );
-        // Mark locked state
-        recommendedTool.is_locked = lockedToolIds.includes(recommendedTool.id);
-        return true;
-      });
-
-      if (validTools.length > 0) {
+      if (data.tools && data.tools.length > 0) {
         onStepChange?.('complete');
+        const toolsWithLock = data.tools.map(recommendedTool => ({
+          ...recommendedTool,
+          is_locked: lockedToolIds.includes(recommendedTool.id),
+        }));
         return {
           ...data,
-          tools: validTools,
+          tools: toolsWithLock,
         };
       }
     }

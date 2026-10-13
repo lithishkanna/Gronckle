@@ -26,6 +26,8 @@ export interface Tool {
   likes_count: number;
   security_grade?: string;
   created_at: string;
+  install_command?: string;
+  npm_package?: string;
   embedding?: number[] | null;
 }
 
@@ -119,6 +121,8 @@ export interface StackAlternativeTool {
   stars?: number;
   score: number;
   url: string;
+  install_command?: string;
+  npm_package?: string;
 }
 
 export interface StackToolRecommendation {
@@ -141,6 +145,8 @@ export interface StackToolRecommendation {
   reason: string;
   gotchas?: string[];
   is_locked?: boolean;
+  install_command?: string;
+  npm_package?: string;
   alternatives: StackAlternativeTool[];
 }
 

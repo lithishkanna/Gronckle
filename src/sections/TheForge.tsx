@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getTools, searchTools, incrementLikes, decrementLikes, getComments, addComment, subscribeToToolLikes, subscribeToNewTools, type Tool, type Comment } from '@/lib/supabase';
+import { searchTools, incrementLikes, decrementLikes, getComments, addComment, subscribeToToolLikes, subscribeToNewTools, type Tool, type Comment } from '@/lib/supabase';
 import { toggleBookmark, getUserBookmarks } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
 import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, ArrowRight, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import TargetCursor from '@/components/TargetCursor';
 import { ToolFilters } from '@/components/ToolFilters';
 import { StackRecommendations } from '@/components/StackRecommendations';
+import { fetchFilterCountsFromSql } from '@/lib/search';
 import {
   generateStackPipeline,
   swapToolWithAlternative,
@@ -16,10 +17,10 @@ import {
 import type { StackRecommendationResult, PipelineStep } from '@/types/database';
 import {
   type FilterState,
+  type FilterCounts,
   DEFAULT_FILTER_STATE,
   parseFiltersFromUrl,
   serializeFiltersToUrl,
-  applyFiltersAndSort,
   computeFilterCounts,
   getMaintenanceStatus,
 } from '@/lib/filters';
@@ -66,6 +67,7 @@ export function TheForge() {
   const [bookmarkedTools, setBookmarkedTools] = useState<Set<string>>(new Set());
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [animatingHeart, setAnimatingHeart] = useState<string | null>(null);
+  const [sqlCounts, setSqlCounts] = useState<FilterCounts | null>(null);
 
   // Sync filters to URL query string
   useEffect(() => {
@@ -75,25 +77,48 @@ export function TheForge() {
     window.history.replaceState({}, '', url.toString());
   }, [filters]);
 
-  // Debounced search when filters.search changes
+  // Load SQL facet counts on mount
   useEffect(() => {
-    if (!filters.search.trim()) {
-      loadTools();
-      return;
-    }
+    fetchFilterCountsFromSql()
+      .then(counts => {
+        if (counts) setSqlCounts(counts as unknown as FilterCounts);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Debounced SQL search whenever any filter or search query changes
+  useEffect(() => {
     const timer = setTimeout(async () => {
       try {
         setLoading(true);
-        const results = await searchTools(filters.search.trim());
+        setFetchError(false);
+        const searchParams = {
+          category: filters.category,
+          subcategories: filters.subcategories,
+          languages: filters.languages,
+          frameworks: filters.frameworks,
+          license: filters.license,
+          pricing: filters.pricing,
+          selfHostable: filters.selfHostable,
+          type: filters.type,
+          minStars: filters.minStars,
+          tags: filters.tags,
+          maintenance: filters.maintenance,
+          sort: filters.sort,
+        };
+        const results = await searchTools(filters.search.trim(), {
+          filters: searchParams,
+          limit: 100,
+        });
         setTools(results);
       } catch {
         setFetchError(true);
       } finally {
         setLoading(false);
       }
-    }, 200);
+    }, 180);
     return () => clearTimeout(timer);
-  }, [filters.search]);
+  }, [filters]);
 
   // Oracle state
   const [oracleInput, setOracleInput] = useState('');
@@ -106,8 +131,6 @@ export function TheForge() {
   const commentsCache = useRef<Record<string, Comment[]>>({});
 
   useEffect(() => {
-    loadTools();
-
     // Realtime subscription for live likes updates
     const unsubscribeLikes = subscribeToToolLikes(({ id, likes_count }) => {
       setTools(prev => prev.map(tool =>
@@ -129,19 +152,6 @@ export function TheForge() {
       unsubscribeNew();
     };
   }, []);
-
-  async function loadTools() {
-    try {
-      setLoading(true);
-      setFetchError(false);
-      const data = await getTools();
-      setTools(data);
-    } catch {
-      setFetchError(true);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   // Load bookmarks when authenticated
   useEffect(() => {
@@ -389,8 +399,8 @@ export function TheForge() {
     setNewComment('');
   }
 
-  const counts = computeFilterCounts(tools);
-  const filteredTools = applyFiltersAndSort(tools, filters);
+  const counts = sqlCounts || computeFilterCounts(tools);
+  const filteredTools = tools;
 
   return (
     <div className="min-h-screen pt-16 bg-[#0A0A0A] font-sans selection:bg-white/20">

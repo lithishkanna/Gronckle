@@ -87,6 +87,8 @@ interface ToolRecord {
   open_issues?: number;
   likes_count: number;
   url: string;
+  install_command?: string;
+  npm_package?: string;
 }
 
 interface UnderstoodIntent {
@@ -121,6 +123,8 @@ interface ToolRecommendation {
   score: number;
   reason: string;
   gotchas?: string[];
+  install_command?: string;
+  npm_package?: string;
   alternatives: Array<{
     id: string;
     title: string;
@@ -131,6 +135,8 @@ interface ToolRecommendation {
     stars?: number;
     score: number;
     url: string;
+    install_command?: string;
+    npm_package?: string;
   }>;
 }
 
@@ -143,6 +149,7 @@ interface CompatibilityWarning {
 }
 
 async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
+  const model = Deno.env.get('ANTHROPIC_MODEL') || 'claude-3-7-sonnet-20250219';
   if (ANTHROPIC_API_KEY) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -152,7 +159,7 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model,
         max_tokens: 1500,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
@@ -393,34 +400,6 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch all available tools from DB
-    const { data: allToolsRaw, error: dbError } = await supabase
-      .from('tools')
-      .select('*')
-      .limit(300);
-
-    if (dbError) throw dbError;
-    const allTools = (allToolsRaw || []) as ToolRecord[];
-
-    // If database is empty, return empty list gracefully (Phase requirement: do not hallucinate)
-    if (allTools.length === 0) {
-      return new Response(JSON.stringify({
-        query,
-        understanding: {
-          categories_needed: [],
-          constraints: [],
-          primary_language: 'any',
-          deployment_target: 'any',
-        },
-        tools: [],
-        warnings: [],
-        setup_commands: [],
-        source: 'db_fallback',
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Step 1: Understand
     let understanding: UnderstoodIntent;
     try {
@@ -445,6 +424,74 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
       understanding = heuristicUnderstand(query);
     }
 
+    // Step 2: Retrieve candidate tools per category via SQL search
+    const candidateToolsMap = new Map<string, ToolRecord>();
+
+    for (const category of understanding.categories_needed) {
+      const searchTerms = `${category} ${understanding.constraints.join(' ')} ${query}`.trim();
+      const { data: catResults } = await supabase.rpc('hybrid_search_tools', {
+        search_query: searchTerms,
+        match_limit: 15,
+        filter_category: category,
+      });
+
+      if (catResults && catResults.length > 0) {
+        for (const t of catResults) {
+          candidateToolsMap.set(t.id, t as ToolRecord);
+        }
+      } else {
+        // Fallback without category restriction for flexibility
+        const { data: looseResults } = await supabase.rpc('hybrid_search_tools', {
+          search_query: searchTerms,
+          match_limit: 15,
+        });
+        if (looseResults) {
+          for (const t of looseResults) {
+            candidateToolsMap.set(t.id, t as ToolRecord);
+          }
+        }
+      }
+    }
+
+    // Include locked tools if requested
+    if (locked_tool_ids.length > 0) {
+      const { data: lockedData } = await supabase
+        .from('tools')
+        .select('*')
+        .in('id', locked_tool_ids);
+      if (lockedData) {
+        for (const t of lockedData) candidateToolsMap.set(t.id, t as ToolRecord);
+      }
+    }
+
+    // Ensure candidate pool has baseline tools if database is populated
+    if (candidateToolsMap.size < 10) {
+      const { data: topTools } = await supabase
+        .from('tools')
+        .select('*')
+        .order('likes_count', { ascending: false })
+        .limit(30);
+      if (topTools) {
+        for (const t of topTools) candidateToolsMap.set(t.id, t as ToolRecord);
+      }
+    }
+
+    const allTools = Array.from(candidateToolsMap.values());
+
+    // If database is empty, return empty list gracefully (Phase requirement: do not hallucinate)
+    if (allTools.length === 0) {
+      return new Response(JSON.stringify({
+        query,
+        understanding,
+        tools: [],
+        warnings: [],
+        setup_commands: [],
+        source: 'db_fallback',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Map locked tools
     const lockedToolsMap = new Map<string, ToolRecord>();
     for (const lockedId of locked_tool_ids) {
@@ -454,7 +501,7 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
       }
     }
 
-    // Step 2 & 3: Retrieve and Rank per category
+    // Step 3: Rank candidates per category
     const finalRecommendations: ToolRecommendation[] = [];
     const usedToolIds = new Set<string>();
 
@@ -481,12 +528,14 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
           self_hostable: locked.self_hostable,
           score: 100,
           reason: 'User locked pick for this architectural layer.',
+          install_command: locked.install_command,
+          npm_package: locked.npm_package,
           alternatives: [],
         });
         continue;
       }
 
-      // Rank all available tools for this category
+      // Rank available tools for this category
       const candidates = allTools
         .filter(t => !usedToolIds.has(t.id))
         .map(t => rankTool(t, category, understanding))
@@ -512,6 +561,8 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         stars: c.tool.stars,
         score: c.score,
         url: c.tool.url,
+        install_command: c.tool.install_command,
+        npm_package: c.tool.npm_package,
       }));
 
       finalRecommendations.push({
@@ -532,6 +583,8 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         self_hostable: topPick.tool.self_hostable,
         score: topPick.score,
         reason: topPick.reasons.join('. ') || `Recommended choice for ${category}.`,
+        install_command: topPick.tool.install_command,
+        npm_package: topPick.tool.npm_package,
         alternatives,
       });
     }
@@ -552,8 +605,7 @@ Respond ONLY with valid JSON in this format:
 {
   "explanations": [
     { "id": "uuid-here", "reason": "...", "gotchas": ["..."] }
-  ],
-  "setup_commands": ["npm create ...", "npm install ..."]
+  ]
 }`;
 
         const explainRes = await callLLM(explainSystemPrompt, 'Explain this stack selection.');
@@ -588,15 +640,44 @@ Respond ONLY with valid JSON in this format:
     const chosenTools = allTools.filter(t => validRecommendations.some(r => r.id === t.id));
     const warnings = detectCompatibilityWarnings(chosenTools, understanding.constraints);
 
-    const setupCommands = [
-      `# Initialize project stack for ${understanding.primary_language || 'web'}`,
-      'npm create vite@latest my-app',
-      'cd my-app',
-      validRecommendations.length > 0
-        ? `npm install ${validRecommendations.map(r => (r.slug || r.title).toLowerCase().replace(/[^a-z0-9-]/g, '')).slice(0, 4).join(' ')}`
-        : 'npm install',
-      'npm run dev',
+    // Build smart setup commands (distinguishing npm packages vs CLI / docker tools)
+    const setupCommands: string[] = [
+      `# Initialize project stack for ${understanding.primary_language || 'modern stack'}`
     ];
+
+    const npmPackages: string[] = [];
+    const customCommands: string[] = [];
+
+    for (const rec of validRecommendations) {
+      if (rec.install_command) {
+        customCommands.push(rec.install_command);
+      } else if (rec.npm_package) {
+        npmPackages.push(rec.npm_package);
+      } else {
+        const isNpm = rec.category?.toLowerCase().includes('frontend') ||
+                      rec.category?.toLowerCase().includes('react') ||
+                      (rec.languages || []).some(l => /typescript|javascript/i.test(l));
+        if (isNpm) {
+          npmPackages.push((rec.slug || rec.title).toLowerCase().replace(/[^a-z0-9-]/g, ''));
+        }
+      }
+    }
+
+    if (understanding.primary_language === 'python') {
+      setupCommands.push('python -m venv .venv', 'source .venv/bin/activate');
+    } else {
+      setupCommands.push('npm create vite@latest my-app', 'cd my-app');
+    }
+
+    if (npmPackages.length > 0) {
+      setupCommands.push(`npm install ${npmPackages.slice(0, 5).join(' ')}`);
+    }
+
+    for (const cmd of customCommands) {
+      setupCommands.push(cmd);
+    }
+
+    setupCommands.push('npm run dev');
 
     const resultPayload = {
       query,

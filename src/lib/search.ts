@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Tool } from '@/types/database';
+import { getEmbedding } from './embeddings';
 
 // ─── Developer Synonyms & Query Expansion ───────────────────────────
 
@@ -129,35 +130,89 @@ export async function getDidYouMean(term: string): Promise<string | null> {
 
 // ─── Hybrid Search with Reciprocal Rank Fusion ──────────────────────
 
+export interface SearchFilterParams {
+  category?: string;
+  subcategories?: string[];
+  languages?: string[];
+  frameworks?: string[];
+  license?: string;
+  pricing?: string;
+  selfHostable?: boolean | null;
+  type?: string;
+  minStars?: number;
+  tags?: string[];
+  maintenance?: string;
+  sort?: string;
+  offset?: number;
+}
+
+export async function fetchFilterCountsFromSql(): Promise<Record<string, Record<string, number>> | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_filtered_tool_counts');
+    if (!error && data) {
+      return data as Record<string, Record<string, number>>;
+    }
+  } catch (err) {
+    console.warn('Error fetching SQL filter counts:', err);
+  }
+  return null;
+}
+
 export async function executeHybridSearch(
   query: string,
   options?: {
     embedding?: number[] | null;
     limit?: number;
+    filters?: SearchFilterParams;
     signal?: AbortSignal;
   }
 ): Promise<HybridSearchResult> {
   const cleanQuery = query.trim();
-  if (!cleanQuery) {
-    return { tools: [], total: 0, didYouMean: null, method: 'hybrid-rrf' };
-  }
+  const hasQuery = cleanQuery.length > 0;
 
   // Check if aborted before executing
   if (options?.signal?.aborted) {
     throw new DOMException('Aborted', 'AbortError');
   }
 
-  // 1. Expand query with developer synonyms
-  const expanded = expandQuery(cleanQuery);
+  // 1. Expand query with developer synonyms if searching
+  const expanded = hasQuery ? expandQuery(cleanQuery) : '';
+
+  // 2. Generate vector embedding for semantic search leg
+  let queryEmbedding = options?.embedding ?? null;
+  if (hasQuery && !queryEmbedding) {
+    try {
+      queryEmbedding = await getEmbedding(cleanQuery);
+    } catch {
+      queryEmbedding = null;
+    }
+  }
+
+  const f = options?.filters;
 
   try {
-    // 2. Call PostgreSQL hybrid search RPC
-    const { data, error } = await supabase.rpc('hybrid_search_tools', {
-      search_query: expanded,
-      query_embedding: options?.embedding || null,
+    // 3. Call PostgreSQL hybrid search RPC with FTS, trigram, vector embeddings & SQL filters
+    const rpcParams: Record<string, unknown> = {
+      search_query: hasQuery ? expanded : null,
+      query_embedding: queryEmbedding,
       match_limit: options?.limit || 24,
       rrf_k: 60.0,
-    });
+      filter_category: f?.category && f.category !== 'all' ? f.category : null,
+      filter_subcategories: f?.subcategories?.length ? f.subcategories : null,
+      filter_languages: f?.languages?.length ? f.languages : null,
+      filter_frameworks: f?.frameworks?.length ? f.frameworks : null,
+      filter_license: f?.license && f.license !== 'all' ? f.license : null,
+      filter_pricing: f?.pricing && f.pricing !== 'all' ? f.pricing : null,
+      filter_self_hostable: f?.selfHostable !== undefined && f.selfHostable !== null ? f.selfHostable : null,
+      filter_type: f?.type && f.type !== 'all' ? f.type : null,
+      filter_min_stars: f?.minStars ? f.minStars : null,
+      filter_tags: f?.tags?.length ? f.tags : null,
+      filter_maintenance: f?.maintenance && f.maintenance !== 'all' ? f.maintenance : null,
+      sort_by: f?.sort || 'best',
+      page_offset: f?.offset || 0,
+    };
+
+    const { data, error } = await supabase.rpc('hybrid_search_tools', rpcParams);
 
     if (options?.signal?.aborted) {
       throw new DOMException('Aborted', 'AbortError');
@@ -173,34 +228,35 @@ export async function executeHybridSearch(
       };
     }
 
-    // 3. Fallback: If 0 results, get Did-You-Mean suggestion and log no-result search
-    const didYouMean = await getDidYouMean(cleanQuery);
+    // 4. Fallback: If 0 results on a text query, try Did-You-Mean suggestion
+    if (hasQuery) {
+      const didYouMean = await getDidYouMean(cleanQuery);
+      logSearchQuery(cleanQuery, 0, didYouMean);
 
-    // Asynchronously log the missed search
-    logSearchQuery(cleanQuery, 0, didYouMean);
+      if (didYouMean) {
+        const retryEmbedding = await getEmbedding(didYouMean);
+        const { data: retryData } = await supabase.rpc('hybrid_search_tools', {
+          ...rpcParams,
+          search_query: didYouMean,
+          query_embedding: retryEmbedding,
+          match_limit: options?.limit || 12,
+        });
 
-    // If there is a didYouMean suggestion, try fuzzy match on that
-    if (didYouMean) {
-      const { data: retryData } = await supabase.rpc('hybrid_search_tools', {
-        search_query: didYouMean,
-        match_limit: options?.limit || 10,
-        rrf_k: 60.0,
-      });
-
-      if (retryData && retryData.length > 0) {
-        return {
-          tools: retryData as Tool[],
-          total: retryData.length,
-          didYouMean,
-          method: 'fallback',
-        };
+        if (retryData && retryData.length > 0) {
+          return {
+            tools: retryData as Tool[],
+            total: retryData.length,
+            didYouMean,
+            method: 'fallback',
+          };
+        }
       }
     }
 
     return {
       tools: [],
       total: 0,
-      didYouMean,
+      didYouMean: null,
       method: 'hybrid-rrf',
     };
   } catch (err: unknown) {
@@ -209,12 +265,15 @@ export async function executeHybridSearch(
     }
     console.error('Hybrid search error, falling back:', err);
 
-    // Fallback: simple text search
-    const { data: fallbackData } = await supabase
-      .from('tools')
-      .select('*')
-      .or(`title.ilike.%${cleanQuery}%,description.ilike.%${cleanQuery}%`)
-      .limit(options?.limit || 20);
+    // Fallback: simple text query on tools table
+    let queryBuilder = supabase.from('tools').select('*');
+    if (hasQuery) {
+      queryBuilder = queryBuilder.or(`title.ilike.%${cleanQuery}%,description.ilike.%${cleanQuery}%,slug.ilike.%${cleanQuery}%`);
+    }
+    if (f?.category && f.category !== 'all') {
+      queryBuilder = queryBuilder.eq('category', f.category);
+    }
+    const { data: fallbackData } = await queryBuilder.limit(options?.limit || 20);
 
     const tools = (fallbackData || []) as Tool[];
     return {

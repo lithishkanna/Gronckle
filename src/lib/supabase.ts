@@ -52,18 +52,13 @@ export interface InboxMessage {
 
 // ─── Tools API ──────────────────────────────────────────────────────
 
-export async function getTools(): Promise<Tool[]> {
-  const { data, error } = await supabase
-    .from('tools')
-    .select('*')
-    .order('likes_count', { ascending: false })
-    .limit(100);
-
-  if (error) {
-    console.error('Error fetching tools:', error);
-    return [];
-  }
-  return data || [];
+export async function getTools(
+  filters?: import('./search').SearchFilterParams,
+  limit: number = 100
+): Promise<Tool[]> {
+  const { executeHybridSearch } = await import('./search');
+  const result = await executeHybridSearch('', { filters, limit });
+  return result.tools;
 }
 
 export async function getTopTools(limit: number = 5): Promise<Tool[]> {
@@ -80,10 +75,19 @@ export async function getTopTools(limit: number = 5): Promise<Tool[]> {
   return data || [];
 }
 
-export async function searchTools(query: string, options?: { signal?: AbortSignal }): Promise<Tool[]> {
+export async function searchTools(
+  query: string,
+  options?: { signal?: AbortSignal; filters?: import('./search').SearchFilterParams; limit?: number }
+): Promise<Tool[]> {
   const { executeHybridSearch } = await import('./search');
   const result = await executeHybridSearch(query, options);
-  window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: result.tools.length, didYouMean: result.didYouMean } }));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('gronckle-search', {
+        detail: { count: result.tools.length, didYouMean: result.didYouMean },
+      })
+    );
+  }
   return result.tools;
 }
 
