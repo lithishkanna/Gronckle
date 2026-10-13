@@ -12,9 +12,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// ─── 24h In-Memory LRU Query Cache ─────────────────────────────────────
+// ─── 5-minute In-Memory LRU Query Cache ────────────────────────────────
 const QUERY_CACHE = new Map<string, { result: Record<string, unknown>; timestamp: number }>();
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 // ─── Rate Limiter (Upstash Redis + In-Memory Token Bucket Fallback) ───
 const UPSTASH_REDIS_REST_URL = Deno.env.get('UPSTASH_REDIS_REST_URL') || '';
@@ -393,7 +393,7 @@ Deno.serve(async (req: Request) => {
           ...corsHeaders,
           'Content-Type': 'application/json',
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+          'Cache-Control': 'private, no-cache, no-transform',
         },
       });
     }
@@ -695,7 +695,7 @@ Respond ONLY with valid JSON in this format:
         ...corsHeaders,
         'Content-Type': 'application/json',
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+        'Cache-Control': 'private, no-cache, no-transform',
       },
     });
 
