@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,26 +6,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 0%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 10%;
+    --background: 216 19% 5%; /* #0B0D10 */
+    --foreground: 0 0% 98%;
+    --card: 216 17% 8%; /* #111418 */
+    --card-foreground: 0 0% 98%;
+    --popover: 216 17% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 18 100% 58%; /* #FF6B2B Ember Orange */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 14% 12%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 216 14% 12%;
+    --muted-foreground: 216 10% 60%;
+    --accent: 18 100% 58%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 0 0% 100%;
-    --radius: 0.5rem;
+    --border: 216 12% 14%; /* ~8% white border */
+    --input: 216 12% 14%;
+    --ring: 18 100% 58%; /* #FF6B2B focus ring */
+    --radius: 0.625rem;
   }
 }
 
@@ -40,7 +40,11 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Geist Mono', monospace;
   }
 }
 

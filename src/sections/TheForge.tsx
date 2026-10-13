@@ -5,7 +5,6 @@ import { toggleBookmark, getUserBookmarks } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
 import { Search, Heart, MessageSquare, Share2, ExternalLink, Send, Sparkles, ArrowRight, BookOpen, Star, Scale, AlertTriangle, Layers, Bookmark, GitPullRequest, ArrowRightLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import TargetCursor from '@/components/TargetCursor';
 import { ToolFilters } from '@/components/ToolFilters';
 import { StackRecommendations } from '@/components/StackRecommendations';
 import { AnalyzeRepoModal } from '@/components/AnalyzeRepoModal';
@@ -460,14 +459,7 @@ export function TheForge() {
   const filteredTools = tools;
 
   return (
-    <div className="min-h-screen pt-16 bg-[#0A0A0A] font-sans selection:bg-white/20">
-      <TargetCursor 
-        spinDuration={2}
-        hideDefaultCursor
-        parallaxOn
-        hoverDuration={0.2}
-        targetSelector=".card-glow, button, a"
-      />
+    <div className="min-h-screen pt-16 bg-[#0B0D10] font-sans selection:bg-[#FF6B2B]/20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center">
         
         {/* -- 1. Hero Section & Branding -- */}
