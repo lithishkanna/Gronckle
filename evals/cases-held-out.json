@@ -1,0 +1,128 @@
+[
+  {
+    "id": "heldout-01",
+    "query": "multi-tenant schema migration runner",
+    "expected_tools": ["prisma", "drizzle", "bytebase", "flyway"],
+    "disallowed_tools": ["next-auth", "framer-motion", "tailwind"],
+    "constraints": ["database", "migrations"]
+  },
+  {
+    "id": "heldout-02",
+    "query": "iot mqtt broker with low memory footprint",
+    "expected_tools": ["emqx", "hivemq", "mosquitto", "ably"],
+    "disallowed_tools": ["react", "zustand", "prisma"],
+    "constraints": ["messaging", "iot"]
+  },
+  {
+    "id": "heldout-03",
+    "query": "distributed event sourcing and cqrs framework",
+    "expected_tools": ["kafka", "nats", "inngest", "synadia"],
+    "disallowed_tools": ["tailwindcss", "shadcn-ui"],
+    "constraints": ["backend", "distributed"]
+  },
+  {
+    "id": "heldout-04",
+    "query": "resilient background job queue with rate limiting",
+    "expected_tools": ["bullmq", "inngest", "trigger-dev", "upstash", "cloudamqp"],
+    "disallowed_tools": ["react", "nextjs", "vite"],
+    "constraints": ["queue", "rate-limiting"]
+  },
+  {
+    "id": "heldout-05",
+    "query": "zero config api mocking server for frontend teams",
+    "expected_tools": ["beeceptor", "mockapi", "msw", "mocko-dev"],
+    "disallowed_tools": ["docker", "postgres", "redis"],
+    "constraints": ["mocking", "testing"]
+  },
+  {
+    "id": "heldout-06",
+    "query": "lightweight embedded time series storage",
+    "expected_tools": ["influxdb", "questdb", "timescaledb", "sqlite"],
+    "disallowed_tools": ["clerk", "auth0", "next-auth"],
+    "constraints": ["database", "time-series"]
+  },
+  {
+    "id": "heldout-07",
+    "query": "high throughput websocket gateway with auth",
+    "expected_tools": ["ably", "pusher", "socketio", "centrifugo"],
+    "disallowed_tools": ["prettier", "eslint", "ruff"],
+    "constraints": ["websockets", "realtime"]
+  },
+  {
+    "id": "heldout-08",
+    "query": "server-side pdf generation with custom html templates",
+    "expected_tools": ["puppeteer", "craftmypdf", "pdfbolt", "doczilla", "apitemplate-io"],
+    "disallowed_tools": ["next-auth", "tailwind", "prisma"],
+    "constraints": ["pdf", "templates"]
+  },
+  {
+    "id": "heldout-09",
+    "query": "privacy focused website visitor session recording",
+    "expected_tools": ["openreplay", "posthog", "clarity", "logrocket"],
+    "disallowed_tools": ["fastapi", "flask", "django"],
+    "constraints": ["analytics", "privacy"]
+  },
+  {
+    "id": "heldout-10",
+    "query": "cross platform secure secret and credential manager",
+    "expected_tools": ["infisical", "doppler", "vault", "snapenv"],
+    "disallowed_tools": ["chartjs", "echarts", "d3"],
+    "constraints": ["security", "secrets"]
+  },
+  {
+    "id": "heldout-11",
+    "query": "edge computing runtime for latency sensitive apis",
+    "expected_tools": ["deno-deploy", "cloudflare-workers", "fastly", "vercel"],
+    "disallowed_tools": ["cypress", "playwright", "vitest"],
+    "constraints": ["edge", "serverless"]
+  },
+  {
+    "id": "heldout-12",
+    "query": "automated pr screenshot diffing and visual regression",
+    "expected_tools": ["argos", "percy", "lost-pixel", "playwright"],
+    "disallowed_tools": ["postgresql", "mysql", "sqlite"],
+    "constraints": ["testing", "visual-regression"]
+  },
+  {
+    "id": "heldout-13",
+    "query": "self-hosted alternative to zapier for webhook workflows",
+    "expected_tools": ["n8n", "activepieces", "windmill", "trigger-dev"],
+    "disallowed_tools": ["zustand", "jotai", "redux"],
+    "constraints": ["automation", "self-hostable"]
+  },
+  {
+    "id": "heldout-14",
+    "query": "dead simple error tracking for mobile react native",
+    "expected_tools": ["sentry", "glitchtip", "bugsnag", "honeybadger"],
+    "disallowed_tools": ["tailwind", "postcss", "vite"],
+    "constraints": ["monitoring", "mobile"]
+  },
+  {
+    "id": "heldout-15",
+    "query": "ai prompt evaluation and llm tracing playground",
+    "expected_tools": ["langfuse", "braintrust", "portkey", "maxim", "langwatch"],
+    "disallowed_tools": ["express", "fastify", "koa"],
+    "constraints": ["ai", "tracing"]
+  },
+  {
+    "id": "heldout-16",
+    "query": "dns management api with dynamic record updates",
+    "expected_tools": ["cloudflare", "desec", "hetzner", "cloudns"],
+    "disallowed_tools": ["jest", "mocha", "chai"],
+    "constraints": ["dns", "devops"]
+  },
+  {
+    "id": "heldout-17",
+    "query": "transactional email sending with react template components",
+    "expected_tools": ["resend", "plunk", "postmark", "sendgrid"],
+    "disallowed_tools": ["redis", "dragonfly", "keydb"],
+    "constraints": ["email", "react"]
+  },
+  {
+    "id": "heldout-18",
+    "query": "open source feature flagging with a/b testing experiments",
+    "expected_tools": ["growthbook", "flagsmith", "statsig", "unkey", "posthog"],
+    "disallowed_tools": ["docker", "podman", "kubernetes"],
+    "constraints": ["feature-flags", "open-source"]
+  }
+]
