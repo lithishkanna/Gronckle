@@ -130,7 +130,7 @@ export function IntelHub({ onNavigate, onOpenTool }: IntelHubProps) {
         {/* ── Interactive Stack Architect Chat (replaces Highest Rated) ── */}
         <DenStackChat
           onOpenTool={onOpenTool}
-          onNavigateToSmelt={(query, _stack) => {
+          onNavigateToSmelt={(query) => {
             if (onNavigate) {
               const searchParams = new URLSearchParams(window.location.search);
               if (query) searchParams.set('q', query);
