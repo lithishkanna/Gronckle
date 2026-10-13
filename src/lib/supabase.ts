@@ -14,6 +14,8 @@ const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder');
 
+import { CURATED_REPOS } from '../data/curatedRepos.ts';
+
 export type { Tool };
 
 export interface Comment {
@@ -38,8 +40,16 @@ export interface Repo {
   id: string;
   owner: string;
   repo: string;
+  title?: string;
   description: string;
   stars?: number;
+  category?: string;
+  tags?: string[];
+  why_underrated?: string;
+  url?: string;
+  license?: string;
+  languages?: string[];
+  created_at?: string;
 }
 
 export interface InboxMessage {
@@ -92,18 +102,42 @@ export async function searchTools(
 }
 
 export async function searchRepos(query: string): Promise<Repo[]> {
-  const { data, error } = await supabase
-    .from('repos')
-    .select('*')
-    .or(`repo.ilike.%${query}%,owner.ilike.%${query}%`)
-    .limit(20);
+  const q = query.trim().toLowerCase();
+  try {
+    const { data, error } = await supabase
+      .from('repos')
+      .select('*')
+      .or(`repo.ilike.%${query}%,owner.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+      .order('stars', { ascending: false })
+      .limit(100);
 
-  if (error) {
-    console.error('Error searching repos:', error);
+    if (error || !data || data.length === 0) {
+      const filtered = CURATED_REPOS.filter(r =>
+        r.repo.toLowerCase().includes(q) ||
+        r.owner.toLowerCase().includes(q) ||
+        (r.title && r.title.toLowerCase().includes(q)) ||
+        r.description.toLowerCase().includes(q) ||
+        (r.category && r.category.toLowerCase().includes(q)) ||
+        (r.why_underrated && r.why_underrated.toLowerCase().includes(q)) ||
+        (r.tags && r.tags.some(t => t.toLowerCase().includes(q)))
+      );
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: filtered.length } }));
+      }
+      return filtered;
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: data.length } }));
+    }
+    return data;
+  } catch {
+    const filtered = CURATED_REPOS.filter(r =>
+      r.repo.toLowerCase().includes(q) ||
+      r.owner.toLowerCase().includes(q) ||
+      r.description.toLowerCase().includes(q)
+    );
+    return filtered;
   }
-  const results = data || [];
-  window.dispatchEvent(new CustomEvent('gronckle-search', { detail: { count: results.length } }));
-  return results;
 }
 
 export async function incrementLikes(toolId: string): Promise<boolean> {
@@ -334,17 +368,43 @@ export async function getNews(): Promise<NewsItem[]> {
 
 // ─── Repos API ──────────────────────────────────────────────────────
 
-export async function getRepos(): Promise<Repo[]> {
-  const { data, error } = await supabase
-    .from('repos')
-    .select('*')
-    .limit(20);
+export async function getRepos(category?: string): Promise<Repo[]> {
+  try {
+    let query = supabase
+      .from('repos')
+      .select('*')
+      .order('stars', { ascending: false })
+      .limit(100);
 
-  if (error) {
-    console.error('Error fetching repos:', error);
-    return [];
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data || data.length === 0) {
+      if (category && category !== 'all') {
+        return CURATED_REPOS.filter(r => r.category === category);
+      }
+      return CURATED_REPOS;
+    }
+
+    // Merge any missing curated repos into the data
+    const existingKeys = new Set(data.map(r => `${r.owner.toLowerCase()}/${r.repo.toLowerCase()}`));
+    const missing = CURATED_REPOS.filter(r => !existingKeys.has(`${r.owner.toLowerCase()}/${r.repo.toLowerCase()}`));
+    const combined = [...data, ...missing];
+
+    if (category && category !== 'all') {
+      return combined.filter(r => r.category === category);
+    }
+    return combined;
+  } catch (err) {
+    console.warn('Falling back to curated repos:', err);
+    if (category && category !== 'all') {
+      return CURATED_REPOS.filter(r => r.category === category);
+    }
+    return CURATED_REPOS;
   }
-  return data || [];
 }
 
 export async function fetchRepoStars(owner: string, repo: string): Promise<number> {

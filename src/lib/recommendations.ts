@@ -330,9 +330,9 @@ export function generateStackFromDatabase(
       continue;
     }
 
-    // Rank available candidates
+    // Rank available candidates (exclude repos - Smelt is strictly web tools)
     const candidates = tools
-      .filter(t => !usedIds.has(t.id))
+      .filter(t => !usedIds.has(t.id) && t.type !== 'repo')
       .map(tool => {
         const { score, reasons } = rankTool(tool, category, intent);
         return { tool, score, reasons };

@@ -219,7 +219,7 @@ export async function executeHybridSearch(
     }
 
     if (!error && data && data.length > 0) {
-      const tools = data as Tool[];
+      const tools = (data as Tool[]).filter(t => t.type !== 'repo');
       return {
         tools,
         total: tools.length,
@@ -243,9 +243,10 @@ export async function executeHybridSearch(
         });
 
         if (retryData && retryData.length > 0) {
+          const retryTools = (retryData as Tool[]).filter(t => t.type !== 'repo');
           return {
-            tools: retryData as Tool[],
-            total: retryData.length,
+            tools: retryTools,
+            total: retryTools.length,
             didYouMean,
             method: 'fallback',
           };

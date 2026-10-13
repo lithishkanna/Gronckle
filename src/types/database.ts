@@ -29,6 +29,9 @@ export interface Tool {
   install_command?: string;
   npm_package?: string;
   embedding?: number[] | null;
+  embedding_model?: string;
+  embedded_at?: string;
+  free_tier_note?: string;
 }
 
 export interface Comment {
@@ -54,8 +57,16 @@ export interface Repo {
   id: string;
   owner: string;
   repo: string;
+  title?: string;
   description: string;
   stars?: number;
+  category?: string;
+  tags?: string[];
+  why_underrated?: string;
+  url?: string;
+  license?: string;
+  languages?: string[];
+  created_at?: string;
 }
 
 export interface InboxMessage {

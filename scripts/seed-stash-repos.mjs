@@ -1,0 +1,503 @@
+/**
+ * SEED STASH REPOSITORIES SCRIPT
+ * Seeds curated, high-utility open-source developer repositories into the `repos` table.
+ *
+ * Usage:
+ *   node scripts/seed-stash-repos.mjs
+ */
+
+import { createClient } from '@supabase/supabase-js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function loadEnv() {
+  const envPath = path.resolve(__dirname, '../.env');
+  if (!fs.existsSync(envPath)) return {};
+  const content = fs.readFileSync(envPath, 'utf-8');
+  const env = {};
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const [key, ...values] = trimmed.split('=');
+    env[key.trim()] = values.join('=').trim().replace(/^["']|["']$/g, '');
+  }
+  return env;
+}
+
+const env = loadEnv();
+const supabaseUrl = process.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || 'https://fdjzbwnslbyoccxbumgd.supabase.co';
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase credentials in .env');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+export const STASH_REPOS = [
+  {
+    owner: 'tstack',
+    repo: 'lnav',
+    title: 'lnav',
+    url: 'https://github.com/tstack/lnav',
+    description: 'Terminal log viewer that merges, parses and lets you query log files with SQL and live filtering, no setup needed.',
+    category: 'tooling',
+    tags: ['command-line-tool', 'less', 'log-analysis', 'log-viewer', 'logging', 'pager', 'tail', 'terminal'],
+    languages: ['C++'],
+    license: 'BSD-2-Clause',
+    stars: 10600,
+    why_underrated: 'Most people still grep and tail logs by hand.',
+  },
+  {
+    owner: 'watchexec',
+    repo: 'watchexec',
+    title: 'watchexec',
+    url: 'https://github.com/watchexec/watchexec',
+    description: 'Reruns a command whenever files change, replacing ad-hoc nodemon or entr setups in any language.',
+    category: 'tooling',
+    tags: ['command-line', 'developer-tools', 'file-watchers', 'rust'],
+    languages: ['Rust'],
+    license: 'Apache-2.0',
+    stars: 7200,
+    why_underrated: 'Overshadowed by language-specific watchers.',
+  },
+  {
+    owner: 'tealdeer-rs',
+    repo: 'tealdeer',
+    title: 'tealdeer',
+    url: 'https://github.com/tealdeer-rs/tealdeer',
+    description: 'Very fast tldr client that shows short practical examples for CLI commands instead of long man pages.',
+    category: 'tooling',
+    tags: ['rust', 'tldr', 'cli', 'productivity'],
+    languages: ['Rust'],
+    license: 'Apache-2.0 / MIT',
+    stars: 6600,
+    why_underrated: 'Many devs never heard of tldr, let alone a fast client.',
+  },
+  {
+    owner: 'pvolok',
+    repo: 'dekit',
+    title: 'dekit (formerly mprocs)',
+    url: 'https://github.com/pvolok/dekit',
+    description: 'Runs and monitors several dev processes in one TUI with per-process logs, replacing a pile of terminal tabs.',
+    category: 'tooling',
+    tags: ['cli', 'rust', 'terminal', 'tui', 'process-manager'],
+    languages: ['Rust'],
+    license: 'MIT',
+    stars: 2700,
+    why_underrated: 'Docker compose and tmux get all the attention.',
+  },
+  {
+    owner: 'TwiN',
+    repo: 'gatus',
+    title: 'gatus',
+    url: 'https://github.com/TwiN/gatus',
+    description: 'Config-as-code status page and uptime monitor with alerting that you can self-host in one container.',
+    category: 'devops',
+    tags: ['alerting', 'monitoring', 'self-hosted', 'status-page', 'uptime-monitoring', 'go'],
+    languages: ['Go'],
+    license: 'Apache-2.0',
+    stars: 12300,
+    why_underrated: 'Overshadowed by Uptime Kuma.',
+  },
+  {
+    owner: 'amir20',
+    repo: 'dozzle',
+    title: 'dozzle',
+    url: 'https://github.com/amir20/dozzle',
+    description: 'Lightweight real-time web viewer for Docker, Swarm and Kubernetes container logs with no storage needed.',
+    category: 'devops',
+    tags: ['docker', 'k8s', 'log', 'logging', 'real-time', 'swarm'],
+    languages: ['Go', 'Vue'],
+    license: 'MIT',
+    stars: 14100,
+    why_underrated: 'Many people run heavy logging stacks when this suffices.',
+  },
+  {
+    owner: 'dagucloud',
+    repo: 'dagu',
+    title: 'dagu',
+    url: 'https://github.com/dagucloud/dagu',
+    description: "Self-hosted workflow orchestrator that runs YAML-defined DAGs over existing scripts, SSH and containers without Airflow's weight.",
+    category: 'devops',
+    tags: ['cron', 'dag', 'data-pipeline', 'job-scheduler', 'self-hosted', 'workflow-engine'],
+    languages: ['Go'],
+    license: 'GPL-3.0',
+    stars: 4300,
+    why_underrated: 'Airflow alternative few people know about.',
+  },
+  {
+    owner: 'yannh',
+    repo: 'kubeconform',
+    title: 'kubeconform',
+    url: 'https://github.com/yannh/kubeconform',
+    description: 'Fast validator for Kubernetes manifests, including CRDs, to catch bad YAML in CI before deploy.',
+    category: 'devops',
+    tags: ['compliance', 'kubernetes', 'validation', 'ci'],
+    languages: ['Go'],
+    license: 'Apache-2.0',
+    stars: 3200,
+    why_underrated: 'Quiet CI tool that replaced kubeval.',
+  },
+  {
+    owner: 'dbcli',
+    repo: 'pgcli',
+    title: 'pgcli',
+    url: 'https://github.com/dbcli/pgcli',
+    description: 'Postgres client with autocompletion and syntax highlighting that makes psql feel modern.',
+    category: 'database',
+    tags: ['python', 'postgres', 'postgresql', 'psql', 'cli'],
+    languages: ['Python'],
+    license: 'BSD-3-Clause',
+    stars: 13300,
+    why_underrated: 'Plenty of devs live in plain psql.',
+  },
+  {
+    owner: 'dbcli',
+    repo: 'litecli',
+    title: 'litecli',
+    url: 'https://github.com/dbcli/litecli',
+    description: 'SQLite command-line client with autocompletion and highlighting, like pgcli for SQLite.',
+    category: 'database',
+    tags: ['prompt-toolkit', 'python', 'sqlite', 'syntax-highlighting', 'cli'],
+    languages: ['Python'],
+    license: 'BSD-3-Clause',
+    stars: 3300,
+    why_underrated: 'The sqlite3 shell is what most people use.',
+  },
+  {
+    owner: 'benbjohnson',
+    repo: 'litestream',
+    title: 'litestream',
+    url: 'https://github.com/benbjohnson/litestream',
+    description: 'Continuously streams SQLite changes to S3-style storage so a single-file DB gets real backups and recovery.',
+    category: 'database',
+    tags: ['replication', 's3', 'sqlite', 'backup'],
+    languages: ['Go'],
+    license: 'Apache-2.0',
+    stars: 14400,
+    why_underrated: 'Makes SQLite production-viable but is little known.',
+  },
+  {
+    owner: 'amacneil',
+    repo: 'dbmate',
+    title: 'dbmate',
+    url: 'https://github.com/amacneil/dbmate',
+    description: 'Single-binary, framework-agnostic SQL migration tool that works across many databases and languages.',
+    category: 'database',
+    tags: ['database-migrations', 'go', 'migration', 'postgres', 'mysql', 'sqlite'],
+    languages: ['Go'],
+    license: 'MIT',
+    stars: 7300,
+    why_underrated: 'Overlooked next to framework-specific migrators.',
+  },
+  {
+    owner: 'saulpw',
+    repo: 'visidata',
+    title: 'visidata',
+    url: 'https://github.com/saulpw/visidata',
+    description: 'Terminal spreadsheet multitool for exploring, cleaning and reshaping CSV, JSON, SQLite and more.',
+    category: 'data',
+    tags: ['python', 'cli', 'csv', 'json', 'sqlite', 'tui', 'spreadsheet', 'eda'],
+    languages: ['Python'],
+    license: 'GPL-3.0',
+    stars: 9200,
+    why_underrated: 'Most reach for Excel or pandas for quick looks.',
+  },
+  {
+    owner: 'johnkerl',
+    repo: 'miller',
+    title: 'miller',
+    url: 'https://github.com/johnkerl/miller',
+    description: 'Awk/sed/sort-like tool for name-indexed data such as CSV, TSV and JSON, using field names instead of column numbers.',
+    category: 'data',
+    tags: ['command-line-tools', 'csv', 'json', 'tsv', 'data-processing', 'unix-toolkit'],
+    languages: ['Go'],
+    license: 'BSD-2-Clause',
+    stars: 10000,
+    why_underrated: 'Unknown outside data-wrangling circles.',
+  },
+  {
+    owner: 'simonw',
+    repo: 'datasette',
+    title: 'datasette',
+    url: 'https://github.com/simonw/datasette',
+    description: 'Turns SQLite databases into a browsable, queryable web app with a JSON API and a large plugin ecosystem.',
+    category: 'data',
+    tags: ['csv', 'datasets', 'json', 'sql', 'sqlite', 'python'],
+    languages: ['Python'],
+    license: 'Apache-2.0',
+    stars: 11400,
+    why_underrated: 'Instant data publishing that few developers have tried.',
+  },
+  {
+    owner: 'zizmorcore',
+    repo: 'zizmor',
+    title: 'zizmor',
+    url: 'https://github.com/zizmorcore/zizmor',
+    description: 'Static analyzer that finds security problems in GitHub Actions workflows such as injections and risky permissions.',
+    category: 'security',
+    tags: ['github-actions', 'security', 'security-tools', 'static-analysis', 'audit'],
+    languages: ['Rust'],
+    license: 'MIT',
+    stars: 6700,
+    why_underrated: 'Most teams never audit their CI workflows.',
+  },
+  {
+    owner: 'ossf',
+    repo: 'scorecard',
+    title: 'scorecard',
+    url: 'https://github.com/ossf/scorecard',
+    description: 'Scores open-source projects and dependencies on security practices to judge risk before adopting them.',
+    category: 'security',
+    tags: ['openssf-scorecard', 'scorecard', 'security', 'supply-chain'],
+    languages: ['Go'],
+    license: 'Apache-2.0',
+    stars: 5700,
+    why_underrated: 'Rarely used when choosing dependencies.',
+  },
+  {
+    owner: 'google',
+    repo: 'osv-scanner',
+    title: 'osv-scanner',
+    url: 'https://github.com/google/osv-scanner',
+    description: 'Scans lockfiles and SBOMs against the OSV vulnerability database to find known vulnerable dependencies.',
+    category: 'security',
+    tags: ['scanner', 'security-audit', 'security-tools', 'vulnerability-scanner'],
+    languages: ['Go'],
+    license: 'Apache-2.0',
+    stars: 11000,
+    why_underrated: 'Free multi-ecosystem scanner overshadowed by commercial tools.',
+  },
+  {
+    owner: 'webpro-nl',
+    repo: 'knip',
+    title: 'knip',
+    url: 'https://github.com/webpro-nl/knip',
+    description: 'Finds unused files, dependencies and exports in JS/TS projects so you can delete dead code.',
+    category: 'frontend',
+    tags: ['deadcode', 'dependency-analysis', 'linter', 'typescript', 'unused-code'],
+    languages: ['TypeScript'],
+    license: 'ISC',
+    stars: 12300,
+    why_underrated: 'Dead-code cleanup is rarely automated.',
+  },
+  {
+    owner: 'argyleink',
+    repo: 'open-props',
+    title: 'open-props',
+    url: 'https://github.com/argyleink/open-props',
+    description: 'Ready-made CSS custom properties for colors, spacing, easing and more to get consistent styling without a framework.',
+    category: 'frontend',
+    tags: ['css', 'css-custom-properties', 'css-colors', 'css-gradients'],
+    languages: ['CSS'],
+    license: 'MIT',
+    stars: 5500,
+    why_underrated: 'Tailwind dominates the conversation.',
+  },
+  {
+    owner: 'schemathesis',
+    repo: 'schemathesis',
+    title: 'schemathesis',
+    url: 'https://github.com/schemathesis/schemathesis',
+    description: 'Property-based API tester that fuzzes OpenAPI and GraphQL schemas to find crashes and spec violations automatically.',
+    category: 'backend',
+    tags: ['api-testing', 'fuzzing', 'graphql', 'openapi', 'property-based-testing', 'pytest'],
+    languages: ['Python', 'Rust'],
+    license: 'MIT',
+    stars: 3600,
+    why_underrated: 'Finds bugs that hand-written API tests miss.',
+  },
+  {
+    owner: 'hatoo',
+    repo: 'oha',
+    title: 'oha',
+    url: 'https://github.com/hatoo/oha',
+    description: 'HTTP load generator with a live terminal UI, a friendlier take on hey and wrk.',
+    category: 'backend',
+    tags: ['benchmark', 'cli', 'http', 'load-testing', 'rust', 'tui'],
+    languages: ['Rust'],
+    license: 'MIT',
+    stars: 10600,
+    why_underrated: 'Most devs never load-test locally.',
+  },
+  {
+    owner: 'stoplightio',
+    repo: 'prism',
+    title: 'prism',
+    url: 'https://github.com/stoplightio/prism',
+    description: 'Spins up a mock API server from an OpenAPI or Postman file and can validate requests against the spec.',
+    category: 'backend',
+    tags: ['api-testing', 'mock-server', 'openapi', 'postman-collection', 'cli'],
+    languages: ['TypeScript'],
+    license: 'Apache-2.0',
+    stars: 5000,
+    why_underrated: 'Frontend teams still hand-roll mock servers.',
+  },
+  {
+    owner: 'mockoon',
+    repo: 'mockoon',
+    title: 'mockoon',
+    url: 'https://github.com/mockoon/mockoon',
+    description: 'Local mock API server with a desktop app and CLI, needing no account or remote deployment.',
+    category: 'backend',
+    tags: ['mock-api', 'mock-server', 'openapi', 'rest-api', 'electron'],
+    languages: ['TypeScript'],
+    license: 'MIT',
+    stars: 8400,
+    why_underrated: 'Lesser known than Postman mocks.',
+  },
+  {
+    owner: 'npryce',
+    repo: 'adr-tools',
+    title: 'adr-tools',
+    url: 'https://github.com/npryce/adr-tools',
+    description: 'Command-line helpers for creating and managing Architecture Decision Records in a repo.',
+    category: 'documentation',
+    tags: ['architecture', 'architecture-decision-records', 'documentation', 'markdown'],
+    languages: ['Shell'],
+    license: 'MIT',
+    stars: 5700,
+    why_underrated: 'Most teams never record why decisions were made.',
+  },
+  {
+    owner: 'lycheeverse',
+    repo: 'lychee',
+    title: 'lychee',
+    url: 'https://github.com/lycheeverse/lychee',
+    description: 'Fast async link checker for Markdown, HTML and websites that catches broken links in CI.',
+    category: 'documentation',
+    tags: ['broken-links', 'ci', 'documentation', 'markdown'],
+    languages: ['Rust'],
+    license: 'Apache-2.0 / MIT',
+    stars: 4000,
+    why_underrated: 'Broken docs links are everywhere and checkers are rare.',
+  },
+  {
+    owner: 'vale-cli',
+    repo: 'vale',
+    title: 'vale',
+    url: 'https://github.com/vale-cli/vale',
+    description: 'Markup-aware prose linter that enforces style guides on docs, so documentation gets CI checks like code.',
+    category: 'documentation',
+    tags: ['linter', 'linting', 'vale', 'documentation', 'markdown'],
+    languages: ['Go'],
+    license: 'MIT',
+    stars: 6200,
+    why_underrated: 'Docs-as-code linting is new to most devs.',
+  },
+  {
+    owner: 'k1LoW',
+    repo: 'tbls',
+    title: 'tbls',
+    url: 'https://github.com/k1LoW/tbls',
+    description: 'CI-friendly tool that generates database schema docs and ER diagrams from a live DB.',
+    category: 'documentation',
+    tags: ['database-schema', 'er-diagram', 'markdown', 'mermaid', 'postgresql', 'mysql', 'sqlite'],
+    languages: ['Go'],
+    license: 'MIT',
+    stars: 4400,
+    why_underrated: 'Auto-generated schema docs are rare.',
+  },
+  {
+    owner: 'simonw',
+    repo: 'llm',
+    title: 'llm',
+    url: 'https://github.com/simonw/llm',
+    description: 'CLI and Python library for running prompts against many LLMs, with logging to SQLite and a plugin system.',
+    category: 'ai-ml',
+    tags: ['ai', 'llms', 'openai', 'sqlite', 'cli'],
+    languages: ['Python'],
+    license: 'Apache-2.0',
+    stars: 12400,
+    why_underrated: 'A scriptable LLM CLI, overshadowed by chat UIs.',
+  },
+  {
+    owner: 'simonw',
+    repo: 'files-to-prompt',
+    title: 'files-to-prompt',
+    url: 'https://github.com/simonw/files-to-prompt',
+    description: 'Concatenates a directory of files into one prompt for an LLM, handy for pasting code context.',
+    category: 'ai-ml',
+    tags: ['ai', 'llms', 'prompt-engineering', 'cli', 'developer-tools'],
+    languages: ['Python'],
+    license: 'Apache-2.0',
+    stars: 2800,
+    why_underrated: 'Tiny tool that solves a common prompt-building chore.',
+  },
+];
+
+async function seed() {
+  console.log(`Starting to seed ${STASH_REPOS.length} stash repositories into Supabase...`);
+
+  let successCount = 0;
+  for (const item of STASH_REPOS) {
+    const payload = {
+      owner: item.owner,
+      repo: item.repo,
+      description: item.description,
+      stars: item.stars,
+      category: item.category,
+      tags: item.tags,
+      why_underrated: item.why_underrated,
+      url: item.url,
+      license: item.license,
+      languages: item.languages,
+    };
+
+    // Check if repo with owner and repo already exists
+    const { data: existing, error: checkErr } = await supabase
+      .from('repos')
+      .select('id')
+      .eq('owner', item.owner)
+      .eq('repo', item.repo)
+      .limit(1);
+
+    if (checkErr) {
+      console.warn(`Error checking ${item.owner}/${item.repo}:`, checkErr.message);
+    }
+
+    if (existing && existing.length > 0) {
+      const { error: updateErr } = await supabase
+        .from('repos')
+        .update(payload)
+        .eq('id', existing[0].id);
+
+      if (updateErr) {
+        console.warn(`Error updating ${item.owner}/${item.repo}:`, updateErr.message);
+      } else {
+        successCount++;
+        process.stdout.write('.');
+      }
+    } else {
+      const { error: insertErr } = await supabase
+        .from('repos')
+        .insert(payload);
+
+      if (insertErr) {
+        console.warn(`Error inserting ${item.owner}/${item.repo}:`, insertErr.message);
+      } else {
+        successCount++;
+        process.stdout.write('+');
+      }
+    }
+  }
+
+  console.log(`\nDone! Successfully seeded ${successCount}/${STASH_REPOS.length} stash repositories.`);
+}
+
+if (process.argv[1] && (process.argv[1].endsWith('seed-stash-repos.mjs') || process.argv[1].endsWith('seed-stash-repos'))) {
+  seed().catch(err => {
+    console.error('Seed script failed:', err);
+    process.exit(1);
+  });
+}

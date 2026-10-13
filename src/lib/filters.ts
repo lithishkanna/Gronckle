@@ -175,9 +175,9 @@ export function applyFiltersAndSort(tools: Tool[], filters: FilterState): Tool[]
     list = list.filter(t => Boolean(t.self_hostable) === filters.selfHostable);
   }
 
-  // 8. Type (repo, website, library, service)
+  // 8. Type (library, service, website)
   if (filters.type !== 'all') {
-    list = list.filter(t => (t.type || 'repo').toLowerCase() === filters.type.toLowerCase());
+    list = list.filter(t => (t.type || 'library').toLowerCase() === filters.type.toLowerCase());
   }
 
   // 9. Maintenance Status
@@ -270,7 +270,7 @@ export function computeFilterCounts(tools: Tool[]): FilterCounts {
     counts.categories[cat] = (counts.categories[cat] || 0) + 1;
 
     // Type
-    const type = (t.type || 'repo').toLowerCase();
+    const type = (t.type || 'library').toLowerCase();
     counts.types[type] = (counts.types[type] || 0) + 1;
 
     // Pricing
