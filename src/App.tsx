@@ -163,7 +163,7 @@ function App() {
     switch (currentPage) {
       case 'den':
       case 'intel':
-        return <IntelHub />;
+        return <IntelHub onNavigate={handleNavigate} onOpenTool={handleOpenTool} />;
       case 'smelt':
       case 'forge':
         return <TheForge />;
@@ -174,7 +174,7 @@ function App() {
       case 'terminal':
         return <TheTerminal />;
       default:
-        return <IntelHub />;
+        return <IntelHub onNavigate={handleNavigate} onOpenTool={handleOpenTool} />;
     }
   };
 
