@@ -60,10 +60,11 @@ export function ToolDetailPage({ slug, onBack, onSelectForStack }: ToolDetailPag
     async function fetchTool() {
       setLoading(true);
       try {
+        const safeSlug = slug.replace(/[(),."'\\]/g, '').trim();
         const { data, error } = await supabase
           .from('tools')
           .select('*')
-          .or(`slug.eq.${slug},title.ilike.${slug}`)
+          .or(`slug.eq.${safeSlug},title.ilike.${safeSlug}`)
           .limit(1)
           .single();
 

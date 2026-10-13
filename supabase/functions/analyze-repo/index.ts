@@ -191,11 +191,11 @@ Deno.serve(async (req: Request) => {
           name: dep,
           issue: legacyInfo.issue,
           risk: legacyInfo.risk,
-          suggested_alternatives: (alternatives || []).map((a: any) => ({
+          suggested_alternatives: (alternatives || []).map((a: { id: string; title: string; slug?: string; description?: string; url: string; stars?: number }) => ({
             id: a.id,
             title: a.title,
-            slug: a.slug,
-            description: a.description,
+            slug: a.slug || a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            description: a.description || '',
             url: a.url,
             stars: a.stars,
           })),

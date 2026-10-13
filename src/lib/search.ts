@@ -269,7 +269,10 @@ export async function executeHybridSearch(
     // Fallback: simple text query on tools table
     let queryBuilder = supabase.from('tools').select('*');
     if (hasQuery) {
-      queryBuilder = queryBuilder.or(`title.ilike.%${cleanQuery}%,description.ilike.%${cleanQuery}%,slug.ilike.%${cleanQuery}%`);
+      const safeTerm = cleanQuery.replace(/[(),."'\\]/g, ' ').trim();
+      if (safeTerm) {
+        queryBuilder = queryBuilder.or(`title.ilike.%${safeTerm}%,description.ilike.%${safeTerm}%,slug.ilike.%${safeTerm}%`);
+      }
     }
     if (f?.category && f.category !== 'all') {
       queryBuilder = queryBuilder.eq('category', f.category);

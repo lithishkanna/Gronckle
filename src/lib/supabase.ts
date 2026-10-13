@@ -104,10 +104,12 @@ export async function searchTools(
 export async function searchRepos(query: string): Promise<Repo[]> {
   const q = query.trim().toLowerCase();
   try {
-    const { data, error } = await supabase
-      .from('repos')
-      .select('*')
-      .or(`repo.ilike.%${query}%,owner.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+    const safeQuery = query.replace(/[(),."'\\]/g, ' ').trim();
+    const queryBuilder = supabase.from('repos').select('*');
+    const { data, error } = await (safeQuery
+      ? queryBuilder.or(`repo.ilike.%${safeQuery}%,owner.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%,category.ilike.%${safeQuery}%`)
+      : queryBuilder
+    )
       .order('stars', { ascending: false })
       .limit(100);
 
@@ -141,27 +143,33 @@ export async function searchRepos(query: string): Promise<Repo[]> {
 }
 
 export async function incrementLikes(toolId: string): Promise<boolean> {
-  const { data: tool } = await supabase.from('tools').select('likes_count').eq('id', toolId).single();
-  const currentLikes = tool?.likes_count || 0;
-
-  const { error } = await supabase
-    .from('tools')
-    .update({ likes_count: currentLikes + 1 })
-    .eq('id', toolId);
-
-  return !error;
+  const { error } = await supabase.rpc('increment_tool_likes', { tool_id: toolId });
+  if (error) {
+    // Fallback if RPC fails
+    const { data: tool } = await supabase.from('tools').select('likes_count').eq('id', toolId).single();
+    const currentLikes = tool?.likes_count || 0;
+    const { error: updateErr } = await supabase
+      .from('tools')
+      .update({ likes_count: currentLikes + 1 })
+      .eq('id', toolId);
+    return !updateErr;
+  }
+  return true;
 }
 
 export async function decrementLikes(toolId: string): Promise<boolean> {
-  const { data: tool } = await supabase.from('tools').select('likes_count').eq('id', toolId).single();
-  const currentLikes = tool?.likes_count || 0;
-
-  const { error } = await supabase
-    .from('tools')
-    .update({ likes_count: Math.max(0, currentLikes - 1) })
-    .eq('id', toolId);
-
-  return !error;
+  const { error } = await supabase.rpc('decrement_tool_likes', { tool_id: toolId });
+  if (error) {
+    // Fallback if RPC fails
+    const { data: tool } = await supabase.from('tools').select('likes_count').eq('id', toolId).single();
+    const currentLikes = tool?.likes_count || 0;
+    const { error: updateErr } = await supabase
+      .from('tools')
+      .update({ likes_count: Math.max(0, currentLikes - 1) })
+      .eq('id', toolId);
+    return !updateErr;
+  }
+  return true;
 }
 
 // ─── Comments API ───────────────────────────────────────────────────
