@@ -11,7 +11,7 @@
     "seed:dev": "node scripts/seed-dev-tools.mjs",
     "seed:dev:clean": "node scripts/seed-dev-tools.mjs --clean",
     "eval": "node evals/run-evals.mjs",
-    "test": "node --experimental-strip-types --test tests/filters.test.mjs tests/ranking.test.mjs tests/recommendations.test.mjs tests/llm-adapter.test.mjs"
+    "test": "node --experimental-strip-types --test tests/filters.test.mjs tests/ranking.test.mjs tests/recommendations.test.mjs tests/llm-adapter.test.mjs tests/recommendations-v2.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

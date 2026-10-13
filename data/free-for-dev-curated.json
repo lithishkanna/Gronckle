@@ -1,0 +1,749 @@
+[
+ {
+  "include": false,
+  "exclude_reason": "Mainstream cloud giant, not underrated",
+  "flags": [
+   "mainstream"
+  ],
+  "title": "Google Cloud Platform",
+  "name": "Google Cloud Platform",
+  "slug": "google-cloud-platform",
+  "type": "service",
+  "url": "https://cloud.google.com",
+  "description": "App Engine - 28 frontend instance hours per day, nine backend instance hours per day; Cloud Firestore - 1GB storage, 50,000 reads, 20,000 writes, 20,000 deletes per day; Compute Engine - 1 non-preemptible e2-micro, 30GB HDD, 5GB snapshot storage (restricted to certain regions), 1 GB network egress from North America to all region destinations (excluding China and Australia) per month; Cloud Storage - 5GB, 1GB network egress; Cloud Shell - Web-based Linux shell/primary IDE with 5GB of persistent storage. 60-hour limit per week; Cloud Pub/Sub - 10GB of messages per month; Cloud Functions - 2 mil",
+  "free_tier_note": "App Engine - 28 frontend instance hours per day, nine backend instance hours per day; Cloud Firestore - 1GB storage, 50,000 reads, 20,000 writes, 20,000 deletes per day; Compute Engine - 1 non-preemptible e2-micro, 30GB HDD, 5GB snapshot storage; Cloud Storage - 5GB, 1GB network egress",
+  "category": "devops",
+  "subcategories": [
+   "Major Cloud Providers"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "major",
+   "cloud",
+   "providers"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": false,
+  "exclude_reason": "Mainstream cloud giant, not underrated",
+  "flags": [
+   "mainstream"
+  ],
+  "title": "Amazon Web Services",
+  "name": "Amazon Web Services",
+  "slug": "amazon-web-services",
+  "type": "service",
+  "url": "https://aws.amazon.com",
+  "description": "CloudFront - 1TB egress/month, 10M HTTP requests, and 2M Function invocations/month; CloudWatch - 10 custom metrics and alarms, 1M API requests, 5GB of log data ingestion and 5GB of log data archive; CodeBuild - 100min of build time/month; DynamoDB - 25GB NoSQL DB; Lambda - 1 million requests/month; SNS - 1 million publishes/month; SQS - 1 million messaging queue requests",
+  "free_tier_note": "CloudFront - 1TB egress/month, 10M HTTP requests; CloudWatch - 5GB logs; DynamoDB - 25GB NoSQL DB; Lambda - 1 million requests/month; SQS - 1 million queue requests",
+  "category": "devops",
+  "subcategories": [
+   "Major Cloud Providers"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "major",
+   "cloud",
+   "providers"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": false,
+  "exclude_reason": "Mainstream cloud giant, not underrated",
+  "flags": [
+   "mainstream"
+  ],
+  "title": "Microsoft Azure",
+  "name": "Microsoft Azure",
+  "slug": "microsoft-azure",
+  "type": "service",
+  "url": "https://azure.microsoft.com",
+  "description": "App Service - 10 web, mobile, or API apps (60 CPU minutes/day); Functions - 1 million requests per month; DevTest Labs - Enable fast, easy, and lean dev-test environments; Active Directory - 500,000 objects; Azure DevOps - 5 active users, unlimited private Git repos; Azure Pipelines - 10 free parallel jobs",
+  "free_tier_note": "App Service - 10 apps (60 CPU min/day); Functions - 1 million requests/month; Azure DevOps - 5 active users, unlimited private Git repos",
+  "category": "devops",
+  "subcategories": [
+   "Major Cloud Providers"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "major",
+   "cloud",
+   "providers"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": false,
+  "exclude_reason": "Mainstream cloud giant, not underrated",
+  "flags": [
+   "mainstream"
+  ],
+  "title": "Oracle Cloud",
+  "name": "Oracle Cloud",
+  "slug": "oracle-cloud",
+  "type": "service",
+  "url": "https://www.oracle.com/cloud/",
+  "description": "Compute: 2 AMD-based Compute VMs with 1/8 OCPU and 1 GB memory each; 2 Arm-based Ampere A1 cores and 12 GB memory; Block Volume - 200 GB total; Object Storage - 10 GB; Databases - 2 DBs, 20 GB each; Bandwidth - 10 TB egress per month",
+  "free_tier_note": "2 AMD VMs + 4 Arm cores with 24GB RAM; 200 GB block storage; 10 TB outbound bandwidth/month; 2 Autonomous DBs (20 GB each)",
+  "category": "devops",
+  "subcategories": [
+   "Major Cloud Providers"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "major",
+   "cloud",
+   "providers"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": false,
+  "exclude_reason": "Mainstream cloud giant, not underrated",
+  "flags": [
+   "mainstream"
+  ],
+  "title": "Cloudflare",
+  "name": "Cloudflare",
+  "slug": "cloudflare",
+  "type": "service",
+  "url": "https://www.cloudflare.com/",
+  "description": "Application Services - Free DNS for an unlimited number of domains, DDoS Protection, CDN along with free SSL, Firewall rules, WAF, Bot Mitigation, Analytics; Zero Trust & SASE - Up to 50 Users; Cloudflare Tunnel - Expose locally running HTTP ports; Workers - Deploy serverless code",
+  "free_tier_note": "Free unmetered DDoS protection, global CDN, DNS for unlimited domains, SSL, 100,000 Worker requests/day, 50 Zero Trust seats",
+  "category": "devops",
+  "subcategories": [
+   "Major Cloud Providers"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "major",
+   "cloud",
+   "providers"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Brainboard",
+  "name": "Brainboard",
+  "slug": "brainboard",
+  "type": "service",
+  "url": "https://www.brainboard.co",
+  "description": "Collaborative solution to visually build and manage cloud infrastructures from end-to-end.",
+  "free_tier_note": "Free collaborative cloud visual designer and infrastructure builder.",
+  "category": "devops",
+  "subcategories": [
+   "Cloud management solutions"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "cloud",
+   "management",
+   "solutions"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Cloud 66",
+  "name": "Cloud 66",
+  "slug": "cloud-66",
+  "type": "service",
+  "url": "https://www.cloud66.com/",
+  "description": "Free for personal projects (includes one deployment server, one static site), Cloud 66 gives you everything you need to build, deploy, and grow your applications on any cloud without the headache of the 'server stuff.'",
+  "free_tier_note": "Free for personal projects: 1 deployment server and 1 static site with full automated orchestration.",
+  "category": "devops",
+  "subcategories": [
+   "Cloud management solutions"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "cloud",
+   "management",
+   "solutions"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Cloud Cost Analyzer",
+  "name": "Cloud Cost Analyzer",
+  "slug": "cloud-cost-analyzer",
+  "type": "service",
+  "url": "https://cca.dragonfractal.com/",
+  "description": "Scan AWS and Azure for cost waste with 92 automated checks including idle NAT gateways, gp2 volumes, and over-provisioned instances. Get savings estimates in a read-only, developer-first CLI. Free tier covers up to 5,000 resources per scan on one AWS account.",
+  "free_tier_note": "Free scan of up to 5,000 resources per scan on one AWS account with 92 automated waste checks.",
+  "category": "devops",
+  "subcategories": [
+   "Cloud management solutions"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "cloud",
+   "management",
+   "solutions"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Pulumi",
+  "name": "Pulumi",
+  "slug": "pulumi",
+  "type": "service",
+  "url": "https://www.pulumi.com/",
+  "description": "Modern infrastructure as a code platform that allows you to use familiar programming languages and tools to build, deploy, and manage cloud infrastructure.",
+  "free_tier_note": "Free individual plan with unlimited state storage and concurrent deployments using TypeScript, Python, or Go.",
+  "category": "devops",
+  "subcategories": [
+   "Cloud management solutions"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "cloud",
+   "management",
+   "iac"
+  ],
+  "languages": ["TypeScript", "Python", "Go"],
+  "license": "Apache-2.0",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "mature",
+  "stars": 22000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Codeberg",
+  "name": "Codeberg",
+  "slug": "codeberg",
+  "type": "service",
+  "url": "https://codeberg.org/",
+  "description": "Unlimited public and private Git repos for free and open-source projects (with unlimited collaborators). Powered by Forgejo. Static website hosting with Codeberg Pages. CI/CD hosting with Codeberg's CI.",
+  "free_tier_note": "Unlimited public/private repos for open source with unlimited collaborators, Pages, and CI.",
+  "category": "tooling",
+  "subcategories": [
+   "Source Code Repos"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "git",
+   "repos",
+   "forgejo"
+  ],
+  "languages": [],
+  "license": "GPL-3.0",
+  "pricing": "open source",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 5000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Brave Search API",
+  "name": "Brave Search API",
+  "slug": "brave-search-api",
+  "type": "service",
+  "url": "https://brave.com/search/api/",
+  "description": "Independent web, news, image, video search and AI/LLM context API, suitable for RAG pipelines and AI agents. Free tier includes $5 in monthly credits.",
+  "free_tier_note": "$5 in monthly free credits for web, news, image, and AI context API queries.",
+  "category": "data",
+  "subcategories": [
+   "APIs, Data, and ML"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "apis",
+   "search",
+   "rag"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Firecrawl",
+  "name": "Firecrawl",
+  "slug": "firecrawl",
+  "type": "service",
+  "url": "https://www.firecrawl.dev/",
+  "description": "API that crawls websites and converts them into clean, LLM-ready markdown or structured data, handling JavaScript rendering, proxies, and rate limits. The free plan includes 1,000 credits per month with no credit card required.",
+  "free_tier_note": "1,000 free scraping & crawling credits/month with LLM-ready markdown conversion and JS rendering.",
+  "category": "data",
+  "subcategories": [
+   "APIs, Data, and ML"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "scraping",
+   "llm",
+   "markdown"
+  ],
+  "languages": [],
+  "license": "AGPL-3.0",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 18000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Inngest",
+  "name": "Inngest",
+  "slug": "inngest",
+  "type": "service",
+  "url": "https://www.inngest.com",
+  "description": "Durable execution and event-driven workflows for TypeScript, Python, and Go. Hobby plan is free with 50k executions/month, 5 concurrent steps, 500k events ingested, and no credit card required.",
+  "free_tier_note": "50,000 executions/month, 5 concurrent steps, and 500k events ingested free forever.",
+  "category": "backend",
+  "subcategories": [
+   "APIs, Data, and ML"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "queue",
+   "workflows",
+   "background-jobs"
+  ],
+  "languages": ["TypeScript", "Python", "Go"],
+  "license": "Apache-2.0",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 3500,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Svix",
+  "name": "Svix",
+  "slug": "svix",
+  "type": "service",
+  "url": "https://www.svix.com/",
+  "description": "Webhooks as a Service. Send up to 50,000 messages/month for free.",
+  "free_tier_note": "50,000 webhook dispatches/month for free with signature verification and auto-retries.",
+  "category": "backend",
+  "subcategories": [
+   "APIs, Data, and ML"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "webhooks",
+   "integration"
+  ],
+  "languages": [],
+  "license": "MIT",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 4200,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Tavily AI",
+  "name": "Tavily AI",
+  "slug": "tavily-ai",
+  "type": "service",
+  "url": "https://tavily.com/",
+  "description": "Search API specifically built for AI agents and LLMs, delivering rapid grounded search and structured content. 1,000 requests/month free with no credit card required.",
+  "free_tier_note": "1,000 free agent search requests/month with synthesized answers and raw content.",
+  "category": "data",
+  "subcategories": [
+   "APIs, Data, and ML"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "ai-search",
+   "rag",
+   "llm"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Trigger.dev",
+  "name": "Trigger.dev",
+  "slug": "trigger-dev",
+  "type": "service",
+  "url": "https://trigger.dev",
+  "description": "Open-source background jobs and AI agent platform with durable tasks, no timeouts, and realtime. Free plan includes $5 monthly compute credits, 20 concurrent runs, unlimited tasks, 5 team members, 10 schedules, and 1-day log retention.",
+  "free_tier_note": "$5 monthly compute credits, 20 concurrent runs, unlimited tasks, and 10 schedules free.",
+  "category": "backend",
+  "subcategories": [
+   "CI and CD"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "queue",
+   "background-jobs",
+   "cron"
+  ],
+  "languages": ["TypeScript"],
+  "license": "Apache-2.0",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 11000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Checkly",
+  "name": "Checkly",
+  "slug": "checkly",
+  "type": "service",
+  "url": "https://checklyhq.com",
+  "description": "Code-first synthetic monitoring for modern DevOps. Monitor your APIs and apps at a fraction of the price of legacy providers. Powered by a Monitoring as Code workflow and Playwright. Generous free tier for devs.",
+  "free_tier_note": "Free tier with 10k API check runs and 1.5k browser check runs per month.",
+  "category": "monitoring",
+  "subcategories": [
+   "Testing"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "monitoring",
+   "synthetic",
+   "playwright"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Infisical",
+  "name": "Infisical",
+  "slug": "infisical",
+  "type": "service",
+  "url": "https://infisical.com/",
+  "description": "Open source platform that lets you manage developer secrets across your team and infrastructure: everywhere from local development to staging/production 3rd-party services. Free for up to 5 developers.",
+  "free_tier_note": "Free for up to 5 developers with encrypted secrets management, unlimited projects, and CLI.",
+  "category": "security",
+  "subcategories": [
+   "Security and PKI"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "security",
+   "secrets",
+   "vault"
+  ],
+  "languages": ["TypeScript"],
+  "license": "MIT",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 15000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Unkey",
+  "name": "Unkey",
+  "slug": "unkey",
+  "type": "service",
+  "url": "https://www.unkey.com/",
+  "description": "Open-source API key management and rate-limiting platform. Free for up to 100,000 requests per month and 100 active API keys, with full access to key creation, revocation, and rate-limiting capabilities.",
+  "free_tier_note": "100,000 requests/month and 100 active API keys free forever with edge rate-limiting.",
+  "category": "auth",
+  "subcategories": [
+   "Authentication, Authorization, and User Management"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "api-keys",
+   "rate-limit",
+   "auth"
+  ],
+  "languages": ["TypeScript"],
+  "license": "Apache-2.0",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 3200,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Ably",
+  "name": "Ably",
+  "slug": "ably",
+  "type": "service",
+  "url": "https://www.ably.com/",
+  "description": "Realtime messaging service with presence, persistence and guaranteed delivery. The free plan includes 3m messages per month, 100 peak connections, and 100 peak channels.",
+  "free_tier_note": "3 million messages/month, 100 peak concurrent connections, and 100 channels free.",
+  "category": "backend",
+  "subcategories": [
+   "Messaging and Streaming"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "websockets",
+   "realtime",
+   "pubsub"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Novu",
+  "name": "Novu",
+  "slug": "novu",
+  "type": "service",
+  "url": "https://novu.co",
+  "description": "The open-source notification infrastructure for developers. Simple components and APIs for managing all communication channels in one place: Email, SMS, Direct, In-App and Push. The free plan includes 30,000 notifications/month with 90 days of retention.",
+  "free_tier_note": "30,000 notifications/month across email, SMS, in-app, and push with 90-day retention.",
+  "category": "backend",
+  "subcategories": [
+   "Messaging and Streaming"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "notifications",
+   "email",
+   "push"
+  ],
+  "languages": ["TypeScript"],
+  "license": "MIT",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 34000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Resend",
+  "name": "Resend",
+  "slug": "resend",
+  "type": "service",
+  "url": "https://resend.com",
+  "description": "Transactional emails API for developers with React email components. 3,000 emails/month, 100 emails/day free, one custom domain.",
+  "free_tier_note": "3,000 emails/month (100 emails/day) free with 1 custom domain and React Email.",
+  "category": "backend",
+  "subcategories": [
+   "Email"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "email",
+   "transactional",
+   "smtp"
+  ],
+  "languages": ["TypeScript"],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Langfuse",
+  "name": "Langfuse",
+  "slug": "langfuse",
+  "type": "service",
+  "url": "https://langfuse.com/",
+  "description": "Open-source LLM engineering platform that helps teams collaboratively debug, analyze, and iterate on their LLM applications. Free forever plan includes 50k observations per month and all platform features.",
+  "free_tier_note": "50,000 observations/month free forever with full tracing, evals, and prompt playground.",
+  "category": "ai-ml",
+  "subcategories": [
+   "Generative AI"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "llm-observability",
+   "evals",
+   "tracing"
+  ],
+  "languages": ["TypeScript", "Python"],
+  "license": "MIT",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 8500,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "PostHog",
+  "name": "PostHog",
+  "slug": "posthog",
+  "type": "service",
+  "url": "https://posthog.com",
+  "description": "Full Product Analytics suite free for up to 1m tracked events per month. Also provides unlimited in-App Surveys with 250/month responses, feature flags, and session recordings.",
+  "free_tier_note": "1,000,000 events/month, 5,000 session replays/month, and unlimited feature flags free.",
+  "category": "analytics",
+  "subcategories": [
+   "Analytics, Events and Statistics"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "analytics",
+   "product-analytics",
+   "session-recording"
+  ],
+  "languages": ["TypeScript", "Python"],
+  "license": "MIT",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "mature",
+  "stars": 24000,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Turso",
+  "name": "Turso",
+  "slug": "turso",
+  "type": "service",
+  "url": "https://turso.tech/",
+  "description": "Turso is SQLite Developer Experience in an Edge Database powered by libSQL. Free Forever starter plan: 9 GB total storage, up to 500 databases, and 1 billion row reads per month.",
+  "free_tier_note": "9 GB total storage across up to 500 databases with 1 billion row reads/month free.",
+  "category": "database",
+  "subcategories": [
+   "Managed Data Services"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "database",
+   "sqlite",
+   "edge"
+  ],
+  "languages": ["Rust", "TypeScript"],
+  "license": "MIT",
+  "pricing": "free tier",
+  "self_hostable": true,
+  "maturity": "stable",
+  "stars": 10500,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ },
+ {
+  "include": true,
+  "title": "Upstash",
+  "name": "Upstash",
+  "slug": "upstash",
+  "type": "service",
+  "url": "https://upstash.com/",
+  "description": "Serverless Redis, Kafka, and Vector with per-request pricing. Free tier up to 10,000 commands/day, 256MB max database size, and TLS.",
+  "free_tier_note": "10,000 commands/day and 256MB storage free forever for Redis and QStash.",
+  "category": "database",
+  "subcategories": [
+   "Managed Data Services"
+  ],
+  "tags": [
+   "free-for-dev",
+   "free tier",
+   "redis",
+   "serverless",
+   "cache"
+  ],
+  "languages": [],
+  "license": "proprietary",
+  "pricing": "free tier",
+  "self_hostable": false,
+  "maturity": "stable",
+  "stars": 0,
+  "source": "free-for.dev (github.com/ripienaar/free-for-dev)"
+ }
+]

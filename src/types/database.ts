@@ -152,12 +152,17 @@ export interface StackToolRecommendation {
   likes_count: number;
   last_commit_date?: string;
   self_hostable?: boolean;
+  pricing?: 'open source' | 'free tier' | 'paid';
   score: number;
   reason: string;
   gotchas?: string[];
   is_locked?: boolean;
   install_command?: string;
   npm_package?: string;
+  underrated_score?: number;
+  underrated_reason?: string;
+  estimated_cost?: string;
+  free_tier_note?: string;
   alternatives: StackAlternativeTool[];
 }
 
@@ -176,11 +181,17 @@ export interface StackRecommendationResult {
     constraints: string[];
     primary_language: string;
     deployment_target: string;
+    scale?: 'hobby' | 'startup' | 'large';
   };
   tools: StackToolRecommendation[];
   warnings: CompatibilityWarning[];
   setup_commands: string[];
   source: 'ai_edge' | 'db_fallback';
+  scale?: 'hobby' | 'startup' | 'large';
+  preset?: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature';
+  estimated_monthly_cost?: string;
+  missing_layers?: string[];
+  mermaid_diagram?: string;
   created_at?: string;
 }
 

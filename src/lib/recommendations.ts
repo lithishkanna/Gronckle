@@ -10,7 +10,12 @@ import type {
 } from '../types/database.ts';
 
 export interface GenerateStackOptions {
+  stack?: string[];
+  constraints?: string[];
+  scale?: 'hobby' | 'startup' | 'large';
+  preset?: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature';
   lockedToolIds?: string[];
+  byok?: string;
   onStepChange?: (step: PipelineStep) => void;
   timeoutMs?: number;
 }
@@ -20,6 +25,7 @@ interface UnderstoodIntent {
   constraints: string[];
   primary_language: string;
   deployment_target: string;
+  scale?: 'hobby' | 'startup' | 'large';
 }
 
 const getEnvVar = (key: string): string => {
@@ -31,6 +37,82 @@ const getEnvVar = (key: string): string => {
 };
 
 const EDGE_FUNCTION_BASE = getEnvVar('VITE_SUPABASE_URL');
+
+// ─── Underrated Score Calculation (docs/underrated-score.md) ───────────
+
+export function calculateUnderratedScore(tool: Partial<Tool> | Record<string, any>): { score: number; reason: string } {
+  let q = 40; // baseline
+
+  if (tool.last_commit_date) {
+    const daysSinceCommit = (Date.now() - new Date(tool.last_commit_date).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCommit <= 30) q += 30;
+    else if (daysSinceCommit <= 90) q += 20;
+    else if (daysSinceCommit <= 180) q += 10;
+    else if (daysSinceCommit > 365) q -= 20;
+  }
+
+  if (tool.self_hostable) q += 15;
+
+  const lic = (tool.license || '').toLowerCase();
+  if (['mit', 'apache', 'bsd', 'isc'].some(l => lic.includes(l))) {
+    q += 10;
+  }
+
+  if (tool.install_command || tool.npm_package) q += 15;
+  if (tool.languages?.some((l: string) => /typescript/i.test(l))) q += 15;
+
+  const stars = tool.stars || 100;
+  const starDamping = Math.max(1.0, Math.log10(Math.max(stars, 100)) - 1.5);
+  const likes = tool.likes_count || 0;
+  const likeBoost = 1 + 0.1 * Math.log(1 + likes);
+
+  const rawScore = Math.round((q / starDamping) * likeBoost);
+  const score = Math.min(99, Math.max(1, rawScore));
+
+  let reason = '';
+  if (score >= 80) {
+    reason = 'Hidden gem: modern architecture, active maintainer velocity, and low overhead relative to adoption.';
+  } else if (score >= 60) {
+    reason = 'Well-balanced tool: reliable production track record with strong developer ergonomics.';
+  } else {
+    reason = 'Industry standard: massive community and documentation with high adoption.';
+  }
+
+  return { score, reason };
+}
+
+// ─── Cost Estimator (using free_tier_note) ─────────────────────────────
+
+export function estimateToolCost(
+  tool: Partial<Tool> | Record<string, any>,
+  scale: 'hobby' | 'startup' | 'large' = 'hobby'
+): { costText: string; isFree: boolean; note?: string } {
+  const isOss = tool.pricing === 'open source' || tool.license?.toLowerCase().includes('mit') || tool.self_hostable;
+
+  if (isOss) {
+    return { costText: '$0/mo (Open Source)', isFree: true, note: 'Self-hostable without license fee' };
+  }
+
+  if (tool.free_tier_note) {
+    if (scale === 'hobby') {
+      return { costText: '$0/mo (Free Tier)', isFree: true, note: tool.free_tier_note };
+    } else if (scale === 'startup') {
+      return { costText: '~$15 - $25/mo (Estimated)', isFree: false, note: `Beyond free tier: ${tool.free_tier_note}` };
+    } else {
+      return { costText: '~$50 - $150/mo (Estimated)', isFree: false, note: `Team scale: ${tool.free_tier_note}` };
+    }
+  }
+
+  if (tool.pricing === 'free tier') {
+    return {
+      costText: scale === 'hobby' ? '$0/mo (Free Tier)' : '~$20/mo (Estimated)',
+      isFree: scale === 'hobby',
+      note: 'Developer tier available',
+    };
+  }
+
+  return { costText: scale === 'hobby' ? '$0/mo' : 'Usage-based pricing', isFree: scale === 'hobby' };
+}
 
 // ─── Step 1: Understand (Deterministic Heuristics Fallback) ────────────
 
@@ -276,9 +358,19 @@ export function detectCompatibilityWarnings(
 export function generateStackFromDatabase(
   query: string,
   tools: Tool[],
-  lockedToolIds: string[] = []
+  lockedToolIds: string[] = [],
+  options: {
+    scale?: 'hobby' | 'startup' | 'large';
+    preset?: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature';
+    stack?: string[];
+    constraints?: string[];
+  } = {}
 ): StackRecommendationResult {
   const intent = understandIntent(query);
+  if (options.scale) intent.scale = options.scale;
+  if (options.constraints && options.constraints.length > 0) {
+    intent.constraints = Array.from(new Set([...intent.constraints, ...options.constraints]));
+  }
 
   if (tools.length === 0) {
     return {
@@ -288,6 +380,8 @@ export function generateStackFromDatabase(
       warnings: [],
       setup_commands: [],
       source: 'db_fallback',
+      scale: options.scale || 'hobby',
+      preset: options.preset || 'balanced',
     };
   }
 
@@ -349,6 +443,9 @@ export function generateStackFromDatabase(
     const topPick = candidates[0];
     usedIds.add(topPick.tool.id);
 
+    const { score: undScore, reason: undReason } = calculateUnderratedScore(topPick.tool);
+    const { costText } = estimateToolCost(topPick.tool, intent.scale || 'hobby');
+
     const alternatives: StackAlternativeTool[] = candidates.slice(1, 4).map(c => ({
       id: c.tool.id,
       title: c.tool.title,
@@ -359,6 +456,8 @@ export function generateStackFromDatabase(
       stars: c.tool.stars,
       score: c.score,
       url: c.tool.url,
+      install_command: c.tool.install_command,
+      npm_package: c.tool.npm_package,
     }));
 
     finalTools.push({
@@ -380,9 +479,19 @@ export function generateStackFromDatabase(
       score: topPick.score,
       reason: topPick.reasons.join('. ') || `Optimal selection for ${category}.`,
       is_locked: false,
+      install_command: topPick.tool.install_command,
+      npm_package: topPick.tool.npm_package,
+      underrated_score: undScore,
+      underrated_reason: undReason,
+      estimated_cost: costText,
+      free_tier_note: topPick.tool.free_tier_note,
       alternatives,
     });
   }
+
+  // Detect missing layers (Step 6 Gaps)
+  const coveredCategories = new Set(finalTools.map(t => t.category));
+  const missing_layers = intent.categories_needed.filter(cat => !coveredCategories.has(cat));
 
   // Step 5: Validate all tool IDs exist in DB
   const validTools = finalTools.filter(t => tools.some(dbTool => dbTool.id === t.id));
@@ -400,7 +509,7 @@ export function generateStackFromDatabase(
       const isNpm = (t.category || '').toLowerCase().includes('frontend') ||
                     (t.category || '').toLowerCase().includes('react') ||
                     (t.languages || []).some(l => /typescript|javascript/i.test(l));
-      if (isNpm) {
+      if (isNpm && !t.url.includes('docker') && t.license !== 'Proprietary') {
         npmPkgs.push((t.slug || t.title).toLowerCase().replace(/[^a-z0-9-]/g, ''));
       }
     }
@@ -424,6 +533,9 @@ export function generateStackFromDatabase(
     warnings,
     setup_commands,
     source: 'db_fallback',
+    missing_layers: missing_layers.length > 0 ? missing_layers : undefined,
+    mermaid_diagram: generateArchitectureDiagram(validTools),
+    scale: intent.scale || 'hobby',
   };
 }
 
@@ -452,7 +564,12 @@ export async function generateStackPipeline(
       },
       body: JSON.stringify({
         query,
+        stack: options.stack || [],
+        constraints: options.constraints || [],
+        scale: options.scale || 'hobby',
+        preset: options.preset || 'balanced',
         locked_tool_ids: lockedToolIds,
+        byok: options.byok,
       }),
       signal: controller.signal,
     });
@@ -485,9 +602,17 @@ export async function generateStackPipeline(
   onStepChange?.('ranking');
   await new Promise(r => setTimeout(r, 120)); // Subtle UI step pacing
   onStepChange?.('explaining');
-  const fallbackResult = generateStackFromDatabase(query, allTools, lockedToolIds);
+  const fallbackResult = generateStackFromDatabase(query, allTools, lockedToolIds, {
+    scale: options.scale,
+    preset: options.preset,
+    stack: options.stack,
+    constraints: options.constraints,
+  });
+  const finalResult = options.preset && options.preset !== 'balanced'
+    ? applyPresetReRanking(fallbackResult, options.preset)
+    : fallbackResult;
   onStepChange?.('complete');
-  return fallbackResult;
+  return finalResult;
 }
 
 // ─── Tool Swapping & Locking Utilities ────────────────────────────────
@@ -619,4 +744,219 @@ export async function submitRecommendationFeedback(feedback: RecommendationFeedb
   if (error) {
     console.warn('Failed to record recommendation feedback:', error);
   }
+}
+
+// ─── Preset Re-Ranking (Phase C Presets) ───────────────────────────────
+
+export function applyPresetReRanking(
+  result: StackRecommendationResult,
+  preset: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature'
+): StackRecommendationResult {
+  if (preset === 'balanced') return { ...result, preset };
+
+  const reRankedTools = result.tools.map(tool => {
+    if (tool.is_locked) return tool;
+
+    const allCandidates = [
+      {
+        id: tool.id,
+        title: tool.title,
+        name: tool.name,
+        slug: tool.slug,
+        description: tool.description,
+        url: tool.url,
+        license: tool.license,
+        stars: tool.stars,
+        install_command: tool.install_command,
+        npm_package: tool.npm_package,
+        score: tool.score,
+        self_hostable: tool.self_hostable,
+        pricing: tool.pricing,
+        free_tier_note: tool.free_tier_note,
+      },
+      ...tool.alternatives.map(a => ({
+        ...a,
+        self_hostable: true,
+        pricing: 'open source' as const,
+        free_tier_note: undefined,
+      })),
+    ];
+
+    // Compute preset specific score
+    const scoredCandidates = allCandidates.map(c => {
+      let presetScore = c.score || 50;
+
+      if (preset === 'cheapest') {
+        if (c.pricing === 'open source' || c.self_hostable) presetScore += 40;
+        if (c.free_tier_note) presetScore += 25;
+      } else if (preset === 'fastest') {
+        if (c.npm_package) presetScore += 30;
+        if (c.install_command) presetScore += 20;
+      } else if (preset === 'open_source') {
+        const lic = (c.license || '').toLowerCase();
+        if (['mit', 'apache', 'bsd', 'isc', 'gpl'].some(l => lic.includes(l))) presetScore += 50;
+        else presetScore -= 50;
+      } else if (preset === 'mature') {
+        presetScore += Math.min(40, Math.log10(Math.max(c.stars || 10, 10)) * 10);
+      }
+
+      return { candidate: c, presetScore };
+    });
+
+    scoredCandidates.sort((a, b) => b.presetScore - a.presetScore);
+    const top = scoredCandidates[0].candidate;
+
+    const remainingAlts: StackAlternativeTool[] = scoredCandidates.slice(1).map(sc => ({
+      id: sc.candidate.id,
+      title: sc.candidate.title,
+      name: sc.candidate.name,
+      slug: sc.candidate.slug,
+      description: sc.candidate.description,
+      license: sc.candidate.license,
+      stars: sc.candidate.stars,
+      score: sc.presetScore,
+      url: sc.candidate.url,
+      install_command: sc.candidate.install_command,
+      npm_package: sc.candidate.npm_package,
+    }));
+
+    const { score: undScore, reason: undReason } = calculateUnderratedScore(top);
+    const { costText } = estimateToolCost(top, result.scale || 'hobby');
+
+    return {
+      ...tool,
+      id: top.id,
+      title: top.title,
+      name: top.name,
+      slug: top.slug,
+      description: top.description,
+      url: top.url,
+      license: top.license,
+      stars: top.stars,
+      score: scoredCandidates[0].presetScore,
+      reason: `Ranked #1 for preset '${preset}'.`,
+      install_command: top.install_command,
+      npm_package: top.npm_package,
+      underrated_score: undScore,
+      underrated_reason: undReason,
+      estimated_cost: costText,
+      free_tier_note: top.free_tier_note,
+      alternatives: remainingAlts,
+    };
+  });
+
+  return {
+    ...result,
+    preset,
+    tools: reRankedTools,
+    mermaid_diagram: generateArchitectureDiagram(reRankedTools),
+  };
+}
+
+// ─── Architecture Diagram Generator (Phase C & D) ──────────────────────
+
+export function generateArchitectureDiagram(tools: StackToolRecommendation[]): string {
+  const lines = [
+    'graph TD',
+    '  classDef pick fill:#111418,stroke:#FF6B2B,stroke-width:2px,color:#fff;',
+  ];
+
+  for (const t of tools) {
+    const cleanId = (t.slug || t.title).replace(/[^a-zA-Z0-9]/g, '_');
+    const label = `"${t.title}\\n(${t.category})"`;
+    lines.push(`  ${cleanId}[${label}]:::pick`);
+  }
+
+  for (let i = 0; i < tools.length - 1; i++) {
+    const idA = (tools[i].slug || tools[i].title).replace(/[^a-zA-Z0-9]/g, '_');
+    const idB = (tools[i + 1].slug || tools[i + 1].title).replace(/[^a-zA-Z0-9]/g, '_');
+    lines.push(`  ${idA} --> ${idB}`);
+  }
+
+  return lines.join('\n');
+}
+
+// ─── Stack Exporters (Phase C Output) ──────────────────────────────────
+
+export function exportPackageJson(tools: StackToolRecommendation[], projectName = 'my-gronckle-stack'): string {
+  const dependencies: Record<string, string> = {};
+
+  for (const t of tools) {
+    if (t.npm_package) {
+      dependencies[t.npm_package] = '^latest';
+    } else if (
+      (t.category.toLowerCase().includes('frontend') ||
+       t.languages?.some(l => /typescript|javascript/i.test(l))) &&
+      !t.url.includes('docker') &&
+      t.license !== 'Proprietary'
+    ) {
+      dependencies[t.slug || t.title.toLowerCase()] = '^latest';
+    }
+  }
+
+  return JSON.stringify(
+    {
+      name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+      version: '0.1.0',
+      private: true,
+      dependencies,
+    },
+    null,
+    2
+  );
+}
+
+export function exportReadme(result: StackRecommendationResult): string {
+  const lines = [
+    `# Recommended Stack: ${result.query}`,
+    ``,
+    `*Grounded tool recommendation by Gronckle — Zero Hallucinations.*`,
+    ``,
+    `## Architecture Diagram`,
+    `\`\`\`mermaid`,
+    result.mermaid_diagram || generateArchitectureDiagram(result.tools),
+    `\`\`\``,
+    ``,
+    `## Selected Tools`,
+    `| Layer | Tool | Underrated Score | Cost Estimate | License |`,
+    `| :--- | :--- | :--- | :--- | :--- |`,
+    ...result.tools.map(
+      t =>
+        `| **${t.category}** | [${t.title}](${t.url}) | **${t.underrated_score || 'N/A'}/99** | ${t.estimated_cost || '$0'} | \`${t.license || 'OSS'}\` |`
+    ),
+    ``,
+    `## Setup Commands`,
+    `\`\`\`bash`,
+    ...result.setup_commands,
+    `\`\`\``,
+  ];
+
+  if (result.warnings && result.warnings.length > 0) {
+    lines.push(
+      ``,
+      `## Compatibility Notices`,
+      ...result.warnings.map(w => `- **[${w.severity.toUpperCase()}] ${w.title}**: ${w.description}`)
+    );
+  }
+
+  return lines.join('\n');
+}
+
+export function exportInstallCommands(tools: StackToolRecommendation[]): string {
+  const cmds: string[] = [];
+  const npmPkgs: string[] = [];
+
+  for (const t of tools) {
+    if (t.install_command) {
+      cmds.push(t.install_command);
+    } else if (t.npm_package) {
+      npmPkgs.push(t.npm_package);
+    }
+  }
+
+  if (npmPkgs.length > 0) {
+    cmds.unshift(`npm install ${npmPkgs.join(' ')}`);
+  }
+
+  return cmds.join('\n');
 }

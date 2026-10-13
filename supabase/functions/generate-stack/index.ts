@@ -1,8 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { callLLM } from "../_shared/llm.ts";
 
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
@@ -89,6 +88,7 @@ interface ToolRecord {
   url: string;
   install_command?: string;
   npm_package?: string;
+  free_tier_note?: string;
 }
 
 interface UnderstoodIntent {
@@ -96,6 +96,7 @@ interface UnderstoodIntent {
   constraints: string[];
   primary_language: string;
   deployment_target: string;
+  scale?: 'hobby' | 'startup' | 'large';
 }
 
 interface RankedCandidate {
@@ -116,6 +117,7 @@ interface ToolRecommendation {
   languages?: string[];
   frameworks?: string[];
   license?: string;
+  pricing?: string;
   stars?: number;
   likes_count: number;
   last_commit_date?: string;
@@ -125,6 +127,10 @@ interface ToolRecommendation {
   gotchas?: string[];
   install_command?: string;
   npm_package?: string;
+  underrated_score?: number;
+  underrated_reason?: string;
+  estimated_cost?: string;
+  free_tier_note?: string;
   alternatives: Array<{
     id: string;
     title: string;
@@ -148,80 +154,125 @@ interface CompatibilityWarning {
   tool_b?: string;
 }
 
-async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
-  const model = Deno.env.get('ANTHROPIC_MODEL') || 'claude-3-7-sonnet-20250219';
-  if (ANTHROPIC_API_KEY) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.content?.[0]?.text || '';
-    }
+// ─── Underrated Score Formula (Phase C) ────────────────────────────────
+function calculateUnderratedScore(tool: ToolRecord): { score: number; reason: string } {
+  let q = 0;
+
+  if (tool.last_commit_date) {
+    const daysSinceCommit = (Date.now() - new Date(tool.last_commit_date).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceCommit <= 30) q += 30;
+    else if (daysSinceCommit <= 90) q += 20;
+    else if (daysSinceCommit <= 180) q += 10;
+    else if (daysSinceCommit > 365) q -= 20;
   }
 
-  if (OPENAI_API_KEY) {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: 1500,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content || '';
-    }
+  if (tool.self_hostable) q += 15;
+
+  const lic = (tool.license || '').toLowerCase();
+  if (['mit', 'apache', 'bsd', 'isc'].some(l => lic.includes(l))) {
+    q += 10;
   }
 
-  throw new Error('No LLM API keys configured or call failed.');
+  if (tool.install_command || tool.npm_package) q += 15;
+  if (tool.languages?.some((l: string) => /typescript/i.test(l))) q += 15;
+
+  const stars = tool.stars || 100;
+  const starDamping = Math.max(1.0, Math.log10(Math.max(stars, 100)) - 1.5);
+  const likes = tool.likes_count || 0;
+  const likeBoost = 1 + 0.1 * Math.log(1 + likes);
+
+  const rawScore = Math.round((q / starDamping) * likeBoost);
+  const score = Math.min(99, Math.max(1, rawScore));
+
+  let reason = '';
+  if (score >= 80) {
+    reason = 'Hidden gem: high maintainer velocity and lightweight architecture with low overhead.';
+  } else if (score >= 60) {
+    reason = 'Well-balanced tool: stable track record and proven developer ergonomics.';
+  } else {
+    reason = 'Established standard: high market adoption with extensive community resources.';
+  }
+
+  return { score, reason };
 }
 
-// Heuristic fallback for Step 1
-function heuristicUnderstand(query: string): UnderstoodIntent {
-  const q = query.toLowerCase();
+// ─── Cost Estimator (Phase C) ──────────────────────────────────────────
+function estimateToolCost(tool: ToolRecord, scale: 'hobby' | 'startup' | 'large' = 'hobby'): { costText: string; isFree: boolean; note?: string } {
+  const isOss = tool.pricing === 'open source' || (tool.license || '').toLowerCase().includes('mit') || tool.self_hostable;
+
+  if (isOss) {
+    return { costText: '$0/mo (Open Source)', isFree: true, note: 'Self-hostable without license fee' };
+  }
+
+  if (tool.free_tier_note) {
+    if (scale === 'hobby') {
+      return { costText: '$0/mo (Free Tier)', isFree: true, note: tool.free_tier_note };
+    } else if (scale === 'startup') {
+      return { costText: '~$15 - $25/mo (Estimated)', isFree: false, note: `Beyond free tier: ${tool.free_tier_note}` };
+    } else {
+      return { costText: '~$50 - $150/mo (Estimated)', isFree: false, note: `Team scale: ${tool.free_tier_note}` };
+    }
+  }
+
+  if (tool.pricing === 'free tier') {
+    return {
+      costText: scale === 'hobby' ? '$0/mo (Free Tier)' : '~$20/mo (Estimated)',
+      isFree: scale === 'hobby',
+      note: 'Developer tier available',
+    };
+  }
+
+  return { costText: scale === 'hobby' ? '$0/mo' : 'Usage-based pricing', isFree: scale === 'hobby' };
+}
+
+// ─── Architecture Diagram Generator (Phase C & D) ──────────────────────
+function generateArchitectureDiagram(tools: ToolRecommendation[]): string {
+  const lines = [
+    'graph TD',
+    '  classDef pick fill:#111418,stroke:#FF6B2B,stroke-width:2px,color:#fff;',
+  ];
+
+  for (const t of tools) {
+    const cleanId = (t.slug || t.title).replace(/[^a-zA-Z0-9]/g, '_');
+    const label = `"${t.title}\\n(${t.category})"`;
+    lines.push(`  ${cleanId}[${label}]:::pick`);
+  }
+
+  for (let i = 0; i < tools.length - 1; i++) {
+    const idA = (tools[i].slug || tools[i].title).replace(/[^a-zA-Z0-9]/g, '_');
+    const idB = (tools[i + 1].slug || tools[i + 1].title).replace(/[^a-zA-Z0-9]/g, '_');
+    lines.push(`  ${idA} --> ${idB}`);
+  }
+
+  return lines.join('\n');
+}
+
+// ─── Step 1 Understand Heuristic Fallback ───────────────────────────────
+function heuristicUnderstand(query: string, stackChips: string[] = []): UnderstoodIntent {
+  const q = `${query} ${stackChips.join(' ')}`.toLowerCase();
   const categories: string[] = [];
   const constraints: string[] = [];
   let primary_language = 'any';
   let deployment_target = 'any';
 
-  if (q.includes('react') || q.includes('frontend') || q.includes('ui') || q.includes('dashboard') || q.includes('canvas')) {
+  if (q.includes('react') || q.includes('vue') || q.includes('frontend') || q.includes('ui') || q.includes('dashboard') || q.includes('canvas') || q.includes('web app')) {
     categories.push('Frontend Framework');
   }
-  if (q.includes('state') || q.includes('realtime') || q.includes('collaborative') || q.includes('sync')) {
+  if (q.includes('state') || q.includes('realtime') || q.includes('collaborative') || q.includes('sync') || q.includes('websocket')) {
     categories.push('State & Realtime');
   }
-  if (q.includes('backend') || q.includes('api') || q.includes('server') || q.includes('chat') || q.includes('auth')) {
+  if (q.includes('backend') || q.includes('api') || q.includes('server') || q.includes('chat') || q.includes('auth') || q.includes('login')) {
     categories.push('Backend & API');
   }
-  if (q.includes('db') || q.includes('database') || q.includes('sql') || q.includes('postgres') || q.includes('storage')) {
+  if (q.includes('db') || q.includes('database') || q.includes('sql') || q.includes('postgres') || q.includes('storage') || q.includes('mongo') || q.includes('redis')) {
     categories.push('Database');
   }
-  if (q.includes('host') || q.includes('deploy') || q.includes('cloud') || q.includes('docker') || q.includes('serverless')) {
+  if (q.includes('host') || q.includes('deploy') || q.includes('cloud') || q.includes('docker') || q.includes('serverless') || q.includes('infra')) {
     categories.push('Hosting & Infra');
   }
 
   if (categories.length === 0) {
-    categories.push('Framework', 'Database', 'Hosting');
+    categories.push('Frontend', 'Database', 'Backend', 'Hosting');
   }
 
   if (q.includes('self-host') || q.includes('on-prem') || q.includes('local')) {
@@ -233,7 +284,7 @@ function heuristicUnderstand(query: string): UnderstoodIntent {
   if (q.includes('python')) {
     primary_language = 'python';
     constraints.push('python');
-  } else if (q.includes('typescript') || q.includes('ts')) {
+  } else if (q.includes('typescript') || q.includes('ts') || q.includes('javascript') || q.includes('react')) {
     primary_language = 'typescript';
     constraints.push('typescript');
   } else if (q.includes('rust')) {
@@ -253,10 +304,11 @@ function heuristicUnderstand(query: string): UnderstoodIntent {
     constraints,
     primary_language,
     deployment_target,
+    scale: 'hobby',
   };
 }
 
-// Step 3 Ranking formula
+// ─── Step 3 Ranking Formula ───────────────────────────────────────────
 function rankTool(tool: ToolRecord, targetCategory: string, intent: UnderstoodIntent): RankedCandidate {
   let score = 0;
   const reasons: string[] = [];
@@ -361,6 +413,95 @@ function detectCompatibilityWarnings(tools: ToolRecord[], constraints: string[])
   return warnings;
 }
 
+// ─── Presets Re-Ranking (Phase C) ──────────────────────────────────────
+function applyPreset(
+  recommendations: ToolRecommendation[],
+  preset: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature'
+): ToolRecommendation[] {
+  if (preset === 'balanced') return recommendations;
+
+  return recommendations.map(rec => {
+    const all = [
+      {
+        id: rec.id,
+        title: rec.title,
+        name: rec.name,
+        slug: rec.slug,
+        category: rec.category,
+        description: rec.description,
+        license: rec.license,
+        pricing: rec.pricing,
+        self_hostable: rec.self_hostable,
+        free_tier_note: rec.free_tier_note,
+        stars: rec.stars,
+        score: rec.score,
+        url: rec.url,
+        install_command: rec.install_command,
+        npm_package: rec.npm_package,
+      },
+      ...rec.alternatives.map(a => ({
+        ...a,
+        category: rec.category,
+        pricing: 'open source',
+        self_hostable: true,
+        free_tier_note: undefined,
+      })),
+    ];
+
+    const scored = all.map(c => {
+      let pScore = c.score || 50;
+      if (preset === 'cheapest') {
+        if (c.pricing === 'open source' || c.self_hostable) pScore += 40;
+        if (c.free_tier_note) pScore += 25;
+      } else if (preset === 'fastest') {
+        if (c.npm_package) pScore += 30;
+        if (c.install_command) pScore += 20;
+      } else if (preset === 'open_source') {
+        const lic = (c.license || '').toLowerCase();
+        if (['mit', 'apache', 'bsd', 'isc', 'gpl'].some(l => lic.includes(l))) pScore += 50;
+        else pScore -= 50;
+      } else if (preset === 'mature') {
+        pScore += Math.min(40, Math.log10(Math.max(c.stars || 10, 10)) * 10);
+      }
+      return { candidate: c, pScore };
+    });
+
+    scored.sort((a, b) => b.pScore - a.pScore);
+    const top = scored[0].candidate;
+
+    const remainingAlts = scored.slice(1).map(s => ({
+      id: s.candidate.id,
+      title: s.candidate.title,
+      name: s.candidate.name,
+      slug: s.candidate.slug,
+      description: s.candidate.description,
+      license: s.candidate.license,
+      stars: s.candidate.stars,
+      score: s.pScore,
+      url: s.candidate.url,
+      install_command: s.candidate.install_command,
+      npm_package: s.candidate.npm_package,
+    }));
+
+    return {
+      ...rec,
+      id: top.id,
+      title: top.title,
+      name: top.name,
+      slug: top.slug,
+      description: top.description,
+      url: top.url,
+      license: top.license,
+      stars: top.stars,
+      score: scored[0].pScore,
+      install_command: top.install_command,
+      npm_package: top.npm_package,
+      alternatives: remainingAlts,
+    };
+  });
+}
+
+// ─── Edge Function Handler ─────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -376,7 +517,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { query, locked_tool_ids = [] } = await req.json() as { query: string; locked_tool_ids?: string[] };
+    const body = await req.json() as {
+      query: string;
+      stack?: string[];
+      constraints?: string[];
+      scale?: 'hobby' | 'startup' | 'large';
+      preset?: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature';
+      locked_tool_ids?: string[];
+      byok?: string;
+    };
+
+    const {
+      query,
+      stack = [],
+      constraints = [],
+      scale = 'hobby',
+      preset = 'balanced',
+      locked_tool_ids = [],
+      byok,
+    } = body;
+
     if (!query || !query.trim()) {
       return new Response(JSON.stringify({ error: 'Query is required' }), {
         status: 400,
@@ -384,8 +544,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Check 24h query cache
-    const cacheKey = `${query.trim().toLowerCase()}::${(locked_tool_ids || []).slice().sort().join(',')}`;
+    // Check query cache (5 min TTL)
+    const cacheKey = `${query.trim().toLowerCase()}::${stack.sort().join(',')}::${scale}::${preset}::${(locked_tool_ids || []).slice().sort().join(',')}`;
     const cached = QUERY_CACHE.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
       return new Response(JSON.stringify(cached.result), {
@@ -402,36 +562,67 @@ Deno.serve(async (req: Request) => {
 
     // Step 1: Understand
     let understanding: UnderstoodIntent;
+    let usedAi = false;
+
     try {
-      const understandSystemPrompt = `You are an architect analyzing a developer's software project.
-Parse their requirements into strict JSON matching this schema:
+      const understandSystemPrompt = `You are a software architect analyzing a project.
+Extract required architectural layers, constraints, primary language, and deployment target.
+Respond ONLY with JSON matching this schema:
 {
-  "categories_needed": ["category1", "category2", ...],
+  "categories_needed": ["layer1", "layer2", ...],
   "constraints": ["constraint1", ...],
   "primary_language": "typescript|python|go|rust|any",
-  "deployment_target": "docker|serverless|edge|any"
+  "deployment_target": "docker|serverless|edge|any",
+  "scale": "hobby|startup|large"
 }
-Categories should be standard software stack roles like: "Frontend", "Database", "Authentication", "API / Backend", "Hosting / Deployment", "State Management".
-Constraints might include "self-hostable", "permissive-license", "lightweight", etc. Respond ONLY with valid JSON.`;
+Categories should be standard software layers like: "Frontend", "Database", "Authentication", "API / Backend", "Hosting / Deployment", "State Management", "Storage", "Monitoring".`;
 
-      const llmUnderstandRes = await callLLM(understandSystemPrompt, `Project: ${query}`);
-      const jsonMatch = llmUnderstandRes.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, llmUnderstandRes];
-      understanding = JSON.parse(jsonMatch[1] || llmUnderstandRes);
+      const userText = `Project Description: ${query}\nTech Stack: ${stack.join(', ')}\nRequested Scale: ${scale}\nConstraints: ${constraints.join(', ')}`;
+
+      const llmUnderstandRes = await callLLM({
+        system: understandSystemPrompt,
+        user: userText,
+        apiKey: byok,
+        ipHash: clientKey,
+        functionName: 'generate-stack-understand',
+        schema: {
+          type: 'object',
+          properties: {
+            categories_needed: { type: 'array', items: { type: 'string' } },
+            constraints: { type: 'array', items: { type: 'string' } },
+            primary_language: { type: 'string' },
+            deployment_target: { type: 'string' },
+            scale: { type: 'string', enum: ['hobby', 'startup', 'large'] },
+          },
+          required: ['categories_needed'],
+        },
+      });
+
+      understanding = llmUnderstandRes.data as UnderstoodIntent;
       if (!Array.isArray(understanding.categories_needed) || understanding.categories_needed.length === 0) {
-        understanding = heuristicUnderstand(query);
+        understanding = heuristicUnderstand(query, stack);
+      } else {
+        usedAi = true;
       }
     } catch {
-      understanding = heuristicUnderstand(query);
+      understanding = heuristicUnderstand(query, stack);
     }
 
-    // Step 2: Retrieve candidate tools per category via SQL search
+    // Merge in user constraints from parameters
+    if (constraints.length > 0) {
+      understanding.constraints = Array.from(new Set([...understanding.constraints, ...constraints]));
+    }
+    understanding.scale = scale;
+
+    // Step 2: Retrieve candidate tools per layer via SQL search
     const candidateToolsMap = new Map<string, ToolRecord>();
+    const missingLayers: string[] = [];
 
     for (const category of understanding.categories_needed) {
       const searchTerms = `${category} ${understanding.constraints.join(' ')} ${query}`.trim();
       const { data: catResults } = await supabase.rpc('hybrid_search_tools', {
         search_query: searchTerms,
-        match_limit: 15,
+        match_limit: 8,
         filter_category: category,
       });
 
@@ -443,12 +634,14 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         // Fallback without category restriction for flexibility
         const { data: looseResults } = await supabase.rpc('hybrid_search_tools', {
           search_query: searchTerms,
-          match_limit: 15,
+          match_limit: 8,
         });
-        if (looseResults) {
+        if (looseResults && looseResults.length > 0) {
           for (const t of looseResults) {
             candidateToolsMap.set(t.id, t as ToolRecord);
           }
+        } else {
+          missingLayers.push(category);
         }
       }
     }
@@ -464,13 +657,13 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
       }
     }
 
-    // Ensure candidate pool has baseline tools if database is populated
-    if (candidateToolsMap.size < 10) {
+    // Baseline fallback to top tools if pool is scarce
+    if (candidateToolsMap.size < 6) {
       const { data: topTools } = await supabase
         .from('tools')
         .select('*')
         .order('likes_count', { ascending: false })
-        .limit(30);
+        .limit(20);
       if (topTools) {
         for (const t of topTools) candidateToolsMap.set(t.id, t as ToolRecord);
       }
@@ -478,7 +671,7 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
 
     const allTools = Array.from(candidateToolsMap.values());
 
-    // If database is empty, return empty list gracefully (Phase requirement: do not hallucinate)
+    // If database is empty, return empty list gracefully (Phase requirement: zero hallucinations)
     if (allTools.length === 0) {
       return new Response(JSON.stringify({
         query,
@@ -487,6 +680,9 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         warnings: [],
         setup_commands: [],
         source: 'db_fallback',
+        scale,
+        preset,
+        missing_layers: missingLayers,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -501,15 +697,17 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
       }
     }
 
-    // Step 3: Rank candidates per category
-    const finalRecommendations: ToolRecommendation[] = [];
+    // Step 3: Deterministic Ranking per layer
+    let finalRecommendations: ToolRecommendation[] = [];
     const usedToolIds = new Set<string>();
 
     for (const category of understanding.categories_needed) {
-      // Check if this category has a locked tool
       const locked = lockedToolsMap.get(category);
       if (locked) {
         usedToolIds.add(locked.id);
+        const { score: undScore, reason: undReason } = calculateUnderratedScore(locked);
+        const { costText } = estimateToolCost(locked, scale);
+
         finalRecommendations.push({
           id: locked.id,
           title: locked.title,
@@ -522,6 +720,7 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
           languages: locked.languages,
           frameworks: locked.frameworks,
           license: locked.license,
+          pricing: locked.pricing,
           stars: locked.stars,
           likes_count: locked.likes_count || 0,
           last_commit_date: locked.last_commit_date,
@@ -530,12 +729,15 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
           reason: 'User locked pick for this architectural layer.',
           install_command: locked.install_command,
           npm_package: locked.npm_package,
+          underrated_score: undScore,
+          underrated_reason: undReason,
+          estimated_cost: costText,
+          free_tier_note: locked.free_tier_note,
           alternatives: [],
         });
         continue;
       }
 
-      // Rank available tools for this category
       const candidates = allTools
         .filter(t => !usedToolIds.has(t.id))
         .map(t => rankTool(t, category, understanding))
@@ -544,7 +746,7 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         .slice(0, 5);
 
       if (candidates.length === 0) {
-        // Return empty for this slot if no matches (do not hallucinate)
+        if (!missingLayers.includes(category)) missingLayers.push(category);
         continue;
       }
 
@@ -565,6 +767,9 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         npm_package: c.tool.npm_package,
       }));
 
+      const { score: undScore, reason: undReason } = calculateUnderratedScore(topPick.tool);
+      const { costText } = estimateToolCost(topPick.tool, scale);
+
       finalRecommendations.push({
         id: topPick.tool.id,
         title: topPick.tool.title,
@@ -577,6 +782,7 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         languages: topPick.tool.languages,
         frameworks: topPick.tool.frameworks,
         license: topPick.tool.license,
+        pricing: topPick.tool.pricing,
         stars: topPick.tool.stars,
         likes_count: topPick.tool.likes_count || 0,
         last_commit_date: topPick.tool.last_commit_date,
@@ -585,34 +791,59 @@ Constraints might include "self-hostable", "permissive-license", "lightweight", 
         reason: topPick.reasons.join('. ') || `Recommended choice for ${category}.`,
         install_command: topPick.tool.install_command,
         npm_package: topPick.tool.npm_package,
+        underrated_score: undScore,
+        underrated_reason: undReason,
+        estimated_cost: costText,
+        free_tier_note: topPick.tool.free_tier_note,
         alternatives,
       });
     }
 
+    // Apply Presets Re-Ranking if specified
+    if (preset !== 'balanced') {
+      finalRecommendations = applyPreset(finalRecommendations, preset);
+    }
+
     // Step 4: Explain (via LLM with grounding in retrieved candidates)
-    if (finalRecommendations.length > 0 && (ANTHROPIC_API_KEY || OPENAI_API_KEY)) {
+    if (finalRecommendations.length > 0) {
       try {
-        const explainSystemPrompt = `You are StackForge, an elite software architect.
-The user requested a stack for: "${query}".
-The database retrieved and selected these specific tools:
+        const explainSystemPrompt = `You are Gronckle, an elite software architect recommending a grounded developer stack.
+The user requested: "${query}".
+The database selected these specific tools:
 ${finalRecommendations.map(r => `- [${r.category}] ${r.title} (ID: ${r.id}): ${r.description}`).join('\n')}
 
-For each selected tool, write:
-1. "reason": A crisp 1-2 sentence technical reason why this specific tool fits the project.
-2. "gotchas": An array of 1-2 practical trade-offs or things to keep in mind.
+For each tool, provide:
+1. "reason": A 1-2 sentence reason quoting the user's specific project needs and why this tool fits.
+2. "gotchas": 1-2 practical production notes or limitations to be aware of.`;
 
-Respond ONLY with valid JSON in this format:
-{
-  "explanations": [
-    { "id": "uuid-here", "reason": "...", "gotchas": ["..."] }
-  ]
-}`;
+        const explainRes = await callLLM({
+          system: explainSystemPrompt,
+          user: 'Provide reasons and gotchas for these specific tools.',
+          apiKey: byok,
+          ipHash: clientKey,
+          functionName: 'generate-stack-explain',
+          schema: {
+            type: 'object',
+            properties: {
+              explanations: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    reason: { type: 'string' },
+                    gotchas: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['id', 'reason'],
+                },
+              },
+            },
+            required: ['explanations'],
+          },
+        });
 
-        const explainRes = await callLLM(explainSystemPrompt, 'Explain this stack selection.');
-        const jsonMatch = explainRes.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, explainRes];
-        const parsed = JSON.parse(jsonMatch[1] || explainRes);
-
-        if (Array.isArray(parsed.explanations)) {
+        const parsed = explainRes.data as { explanations: Array<{ id: string; reason: string; gotchas?: string[] }> };
+        if (Array.isArray(parsed?.explanations)) {
           for (const exp of parsed.explanations) {
             const target = finalRecommendations.find(r => r.id === exp.id);
             if (target && exp.reason) {
@@ -622,9 +853,10 @@ Respond ONLY with valid JSON in this format:
               }
             }
           }
+          usedAi = true;
         }
       } catch {
-        // Fallback: heuristic explanations already present
+        // Fallback: heuristic explanations preserved
       }
     }
 
@@ -632,7 +864,6 @@ Respond ONLY with valid JSON in this format:
     const validRecommendations = finalRecommendations.filter(rec => {
       const exists = allTools.some(t => t.id === rec.id);
       if (!exists) return false;
-      // Filter alternatives to ensure they exist in DB as well
       rec.alternatives = rec.alternatives.filter(alt => allTools.some(t => t.id === alt.id));
       return true;
     });
@@ -640,7 +871,7 @@ Respond ONLY with valid JSON in this format:
     const chosenTools = allTools.filter(t => validRecommendations.some(r => r.id === t.id));
     const warnings = detectCompatibilityWarnings(chosenTools, understanding.constraints);
 
-    // Build smart setup commands (distinguishing npm packages vs CLI / docker tools)
+    // Build smart setup commands
     const setupCommands: string[] = [
       `# Initialize project stack for ${understanding.primary_language || 'modern stack'}`
     ];
@@ -654,10 +885,10 @@ Respond ONLY with valid JSON in this format:
       } else if (rec.npm_package) {
         npmPackages.push(rec.npm_package);
       } else {
-        const isNpm = rec.category?.toLowerCase().includes('frontend') ||
-                      rec.category?.toLowerCase().includes('react') ||
+        const isNpm = (rec.category?.toLowerCase() || '').includes('frontend') ||
+                      (rec.category?.toLowerCase() || '').includes('react') ||
                       (rec.languages || []).some(l => /typescript|javascript/i.test(l));
-        if (isNpm) {
+        if (isNpm && !rec.url.includes('docker') && rec.license !== 'Proprietary') {
           npmPackages.push((rec.slug || rec.title).toLowerCase().replace(/[^a-z0-9-]/g, ''));
         }
       }
@@ -670,7 +901,7 @@ Respond ONLY with valid JSON in this format:
     }
 
     if (npmPackages.length > 0) {
-      setupCommands.push(`npm install ${npmPackages.slice(0, 5).join(' ')}`);
+      setupCommands.push(`npm install ${npmPackages.slice(0, 6).join(' ')}`);
     }
 
     for (const cmd of customCommands) {
@@ -679,13 +910,22 @@ Respond ONLY with valid JSON in this format:
 
     setupCommands.push('npm run dev');
 
+    // Calculate total estimated monthly cost
+    const totalCostNumber = scale === 'hobby' ? 0 : scale === 'startup' ? validRecommendations.length * 15 : validRecommendations.length * 60;
+    const estimatedMonthlyCost = scale === 'hobby' ? '$0/mo (Free Tier / OSS)' : `~$${totalCostNumber}/mo (Estimated for ${scale})`;
+
     const resultPayload = {
       query,
       understanding,
       tools: validRecommendations,
       warnings,
       setup_commands: setupCommands,
-      source: (ANTHROPIC_API_KEY || OPENAI_API_KEY) ? 'ai_edge' : 'db_fallback',
+      source: usedAi ? 'ai_edge' : 'db_fallback',
+      scale,
+      preset,
+      estimated_monthly_cost: estimatedMonthlyCost,
+      missing_layers: missingLayers.length > 0 ? missingLayers : undefined,
+      mermaid_diagram: generateArchitectureDiagram(validRecommendations),
     };
 
     QUERY_CACHE.set(cacheKey, { result: resultPayload, timestamp: Date.now() });

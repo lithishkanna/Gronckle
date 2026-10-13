@@ -13,6 +13,7 @@ import {
   generateStackPipeline,
   swapToolWithAlternative,
   loadSharedStack,
+  applyPresetReRanking,
 } from '@/lib/recommendations';
 import type { StackRecommendationResult, PipelineStep } from '@/types/database';
 import {
@@ -126,6 +127,8 @@ export function TheForge() {
   const [pipelineStep, setPipelineStep] = useState<PipelineStep>('idle');
   const [lockedTools, setLockedTools] = useState<Set<string>>(new Set());
   const [oracleLoading, setOracleLoading] = useState(false);
+  const [selectedScale, setSelectedScale] = useState<'hobby' | 'startup' | 'large'>('hobby');
+  const [selectedPreset, setSelectedPreset] = useState<'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature'>('balanced');
 
   // Cache comments per tool so they persist across dialog opens
   const commentsCache = useRef<Record<string, Comment[]>>({});
@@ -215,6 +218,8 @@ export function TheForge() {
     try {
       const result = await generateStackPipeline(oracleInput.trim(), tools, {
         lockedToolIds: [...lockedTools],
+        scale: selectedScale,
+        preset: selectedPreset,
         onStepChange: setPipelineStep,
       });
       setRecommendationResult(result);
@@ -232,10 +237,57 @@ export function TheForge() {
     setPipelineStep('understanding');
     generateStackPipeline(oracleInput.trim(), tools, {
       lockedToolIds: [...lockedTools],
+      scale: selectedScale,
+      preset: selectedPreset,
       onStepChange: setPipelineStep,
     })
       .then(res => setRecommendationResult(res))
       .catch(err => console.error('Reroll error:', err))
+      .finally(() => {
+        setOracleLoading(false);
+        setPipelineStep('complete');
+      });
+  }
+
+  function handlePresetChange(preset: 'balanced' | 'cheapest' | 'fastest' | 'open_source' | 'mature') {
+    setSelectedPreset(preset);
+    if (!recommendationResult) return;
+    const reRanked = applyPresetReRanking(recommendationResult, preset);
+    setRecommendationResult(reRanked);
+  }
+
+  function handleScaleChange(scale: 'hobby' | 'startup' | 'large') {
+    setSelectedScale(scale);
+    if (!oracleInput.trim() || oracleLoading || tools.length === 0) return;
+    setOracleLoading(true);
+    setPipelineStep('understanding');
+    generateStackPipeline(oracleInput.trim(), tools, {
+      lockedToolIds: [...lockedTools],
+      scale,
+      preset: selectedPreset,
+      onStepChange: setPipelineStep,
+    })
+      .then(res => setRecommendationResult(res))
+      .catch(err => console.error('Scale update error:', err))
+      .finally(() => {
+        setOracleLoading(false);
+        setPipelineStep('complete');
+      });
+  }
+
+  function handleFollowUp(followUpPrompt: string) {
+    const updatedQuery = `${oracleInput.trim()} (${followUpPrompt})`;
+    setOracleInput(updatedQuery);
+    setOracleLoading(true);
+    setPipelineStep('understanding');
+    generateStackPipeline(updatedQuery, tools, {
+      lockedToolIds: [...lockedTools],
+      scale: selectedScale,
+      preset: selectedPreset,
+      onStepChange: setPipelineStep,
+    })
+      .then(res => setRecommendationResult(res))
+      .catch(err => console.error('Follow-up error:', err))
       .finally(() => {
         setOracleLoading(false);
         setPipelineStep('complete');
@@ -471,6 +523,9 @@ export function TheForge() {
           onReroll={handleReroll}
           onToggleLock={handleToggleLock}
           onSwapTool={handleSwapTool}
+          onPresetChange={handlePresetChange}
+          onScaleChange={handleScaleChange}
+          onFollowUp={handleFollowUp}
           allTools={tools}
         />
 
