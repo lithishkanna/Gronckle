@@ -40,10 +40,13 @@ export function expandTextForEmbedding(text: string): string[] {
 }
 
 /**
- * Fast, deterministic unit-normalized 1536-dimensional semantic vector generator.
- * Produces unit L2 norm vectors where dot product = cosine similarity.
+ * Offline keyword-like pseudo-vector generator (FNV-1a hash based).
+ * NOTE: This is NOT a semantic neural embedding. It is purely an offline,
+ * deterministic keyword-hash representation used for zero-credential unit tests
+ * and offline development. Real semantic embeddings are generated exclusively
+ * server-side via OpenAI or Gemini in Supabase edge functions and migration scripts.
  */
-export function generateLocalEmbedding(text: string, dims: number = EMBEDDING_DIMENSIONS): number[] {
+export function generateOfflineKeywordVector(text: string, dims: number = EMBEDDING_DIMENSIONS): number[] {
   const vec = new Float32Array(dims);
   const tokens = expandTextForEmbedding(text);
   if (tokens.length === 0) return Array.from(vec);
@@ -74,41 +77,23 @@ export function generateLocalEmbedding(text: string, dims: number = EMBEDDING_DI
 }
 
 /**
- * Generates an embedding for text.
- * Attempts OpenAI text-embedding-3-small if an API key is provided and active,
- * and gracefully falls back to the local deterministic semantic generator on quota exhaustion or error.
+ * Backward-compatible alias for the offline keyword pseudo-vector.
+ * @deprecated Use generateOfflineKeywordVector or server-side embeddings.
  */
-export async function getEmbedding(text: string, openAiApiKey?: string): Promise<number[]> {
+export const generateLocalEmbedding = generateOfflineKeywordVector;
+
+/**
+ * Client-safe embedding retriever.
+ * In accordance with Gronckle security rules, no AI provider API keys are ever
+ * exposed to or executed inside browser client code.
+ * Browser searches execute PostgreSQL FTS + pg_trgm hybrid search, while
+ * semantic embeddings are generated server-side.
+ */
+export async function getEmbedding(text: string): Promise<number[] | null> {
   const clean = text.trim();
-  if (!clean) return [];
-
-  const apiKey = openAiApiKey || (import.meta as any).env?.OPENAI_API_KEY || (globalThis as any).process?.env?.OPENAI_API_KEY;
-
-  if (apiKey && apiKey.startsWith('sk-')) {
-    try {
-      const res = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({ model: 'text-embedding-3-small', input: clean }),
-        signal: AbortSignal.timeout(3000),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const embedding = json.data?.[0]?.embedding;
-        if (Array.isArray(embedding) && embedding.length === EMBEDDING_DIMENSIONS) {
-          return embedding;
-        }
-      }
-    } catch {
-      // Fall through to local semantic embedding
-    }
-  }
-
-  return generateLocalEmbedding(clean, EMBEDDING_DIMENSIONS);
+  if (!clean) return null;
+  // Offline fallback vector for offline-only simulation
+  return generateOfflineKeywordVector(clean, EMBEDDING_DIMENSIONS);
 }
 
 /**
